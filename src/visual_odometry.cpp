@@ -1,6 +1,3 @@
-//
-// Created by gaoxiang on 19-5-4.
-//
 #include "myslam/visual_odometry.h"
 #include <chrono>
 #include "myslam/config.h"
@@ -18,12 +15,12 @@ bool VisualOdometry::Init() {
 
     dataset_ =
         Dataset::Ptr(new Dataset(Config::Get<std::string>("dataset_dir_kitti")));
-    // 判断两个值是否相等
+    // CHECK_EQ 用来判断两个值是否相等
     CHECK_EQ(dataset_->Init(), true);
 
     // create components（组件） and links（相互访问的指针）
     frontend_ = Frontend::Ptr(new Frontend);
-    backend_ = Backend::Ptr(new Backend);
+    backend_ = Backend::Ptr(new Backend);      
     map_ = Map::Ptr(new Map);
     viewer_ = Viewer::Ptr(new Viewer);
 
@@ -43,9 +40,10 @@ bool VisualOdometry::Init() {
 void VisualOdometry::Run() {
     while (1) {
         LOG(INFO) << "VO is running";
+        // 主循环
         if (Step() == false) {
             break;
-        }
+        }   
     }
 
     backend_->Stop();

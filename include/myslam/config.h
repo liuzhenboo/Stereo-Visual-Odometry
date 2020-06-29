@@ -7,7 +7,7 @@
 namespace myslam {
 
 /**
- * 配置类，使用SetParameterFile确定配置文件
+ * 配置类，使用SetParameterFile确定配置文件位置，这个类就代表这个配置文件，通过类读取配置文件信息。本代码默认是
  * 然后用Get得到对应值
  * 单例模式
  */

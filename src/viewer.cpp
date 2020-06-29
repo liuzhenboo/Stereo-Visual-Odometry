@@ -1,6 +1,3 @@
-//
-// Created by gaoxiang on 19-5-4.
-//
 #include "myslam/viewer.h"
 #include "myslam/feature.h"
 #include "myslam/frame.h"

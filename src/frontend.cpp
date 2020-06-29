@@ -1,7 +1,3 @@
-//
-// Created by gaoxiang on 19-5-2.
-//
-
 #include <opencv2/opencv.hpp>
 
 #include "myslam/algorithm.h"
@@ -21,7 +17,7 @@ Frontend::Frontend() {
     num_features_init_ = Config::Get<int>("num_features_init");
     num_features_ = Config::Get<int>("num_features");
 }
-
+// 向系统输入新的图片数据
 bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
     current_frame_ = frame;
 
@@ -47,6 +43,7 @@ bool Frontend::Track() {
         current_frame_->SetPose(relative_motion_ * last_frame_->Pose());
     }
 
+    // 不提取特征点吗？
     int num_track_last = TrackLastFrame();
     tracking_inliers_ = EstimateCurrentPose();
 
@@ -298,6 +295,7 @@ int Frontend::DetectFeatures() {
 
     std::vector<cv::KeyPoint> keypoints;
     gftt_->detect(current_frame_->left_img_, keypoints, mask);
+
     int cnt_detected = 0;
     for (auto &kp : keypoints) {
         current_frame_->features_left_.push_back(
@@ -311,7 +309,7 @@ int Frontend::DetectFeatures() {
 
 int Frontend::FindFeaturesInRight() {
     // use LK flow to estimate points in the right image
-    std::vector<cv::Point2f> kps_left, kps_right;
+    std::vector<cv::Point2f> kps_left, kps_right; // 2维坐标
     for (auto &kp : current_frame_->features_left_) {
         kps_left.push_back(kp->position_.pt);
         auto mp = kp->map_point_.lock();
