@@ -233,6 +233,8 @@ int Frontend::TrackLastFrame() {
     // use LK flow to estimate points in the right image
     std::vector<cv::Point2f> kps_last, kps_current;
     for (auto &kp : last_frame_->features_left_) {
+        //lock()函数用来判断weak_ptr指向的对象是否存在，是否被释放调；
+        //如果对象存在，lock()函数返回一个指向共享对象的shared_ptr，否则返回一个空的shared_ptr.
         if (kp->map_point_.lock()) {
             // use project point
             auto mp = kp->map_point_.lock();
@@ -415,6 +417,9 @@ bool Frontend::BuildInitMap() {
 bool Frontend::Reset() {
     LOG(INFO) << "Reset is not implemented. ";
     return true;
+}
+int Frontend::RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2){
+    return 0;
 }
 
 }  // namespace myslam

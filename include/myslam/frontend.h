@@ -26,9 +26,6 @@ class Frontend {
     //bool Reset();
     Frame::Ptr current_frame_ = nullptr;  // 当前帧
         Frame::Ptr current_frame1_ = nullptr;  // 当前帧
-
-
-
     Frontend();
 
     /// 外部接口，添加一个帧并计算其定位结果
@@ -47,6 +44,9 @@ class Frontend {
         camera_left_ = left;
         camera_right_ = right;
     }
+    // ransac 剔除外点。
+    int RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2);
+
 
    private:
     /**
