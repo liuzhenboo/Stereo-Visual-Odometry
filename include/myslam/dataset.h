@@ -19,6 +19,8 @@ class Dataset {
 
     /// 初始化，返回是否成功
     bool Init();
+    // 初始化双目，设置左右目类
+    bool Stereo_Init();
 
     /// create and return the next frame containing the stereo images
     Frame::Ptr NextFrame();

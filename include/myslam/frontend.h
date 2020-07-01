@@ -23,6 +23,11 @@ class Frontend {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<Frontend> Ptr;
+    //bool Reset();
+    Frame::Ptr current_frame_ = nullptr;  // 当前帧
+        Frame::Ptr current_frame1_ = nullptr;  // 当前帧
+
+
 
     Frontend();
 
@@ -113,7 +118,7 @@ class Frontend {
     // data
     FrontendStatus status_ = FrontendStatus::INITING;
 
-    Frame::Ptr current_frame_ = nullptr;  // 当前帧
+    //Frame::Ptr current_frame_ = nullptr;  // 当前帧
     Frame::Ptr last_frame_ = nullptr;     // 上一帧
     Camera::Ptr camera_left_ = nullptr;   // 左侧相机
     Camera::Ptr camera_right_ = nullptr;  // 右侧相机

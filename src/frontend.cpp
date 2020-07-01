@@ -19,7 +19,9 @@ Frontend::Frontend() {
 }
 // 向系统输入新的图片数据
 bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
+    std::cout << "bool" << std::endl;
     current_frame_ = frame;
+    std::cout << "bool" << std::endl;
 
     switch (status_) {
         case FrontendStatus::INITING:
@@ -267,7 +269,10 @@ int Frontend::TrackLastFrame() {
 }
 
 bool Frontend::StereoInit() {
+    std::cout << "num_features_left" << std::endl;
+
     int num_features_left = DetectFeatures();
+    std::cout << "num_features_left" << std::endl;
     int num_coor_features = FindFeaturesInRight();
     if (num_coor_features < num_features_init_) {
         LOG(INFO) << "Stereo Init Faild...Try Again!";
@@ -350,6 +355,7 @@ int Frontend::FindFeaturesInRight() {
 }
 
 bool Frontend::BuildInitMap() {
+    // 外参
     std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
     size_t cnt_init_landmarks = 0;
     for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {

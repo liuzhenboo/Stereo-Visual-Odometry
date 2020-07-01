@@ -15,7 +15,7 @@ bool VisualOdometry::Init() {
 
     dataset_ =
         Dataset::Ptr(new Dataset(Config::Get<std::string>("dataset_dir_kitti")));
-    // CHECK_EQ 用来判断两个值是否相等
+    // CHECK_EQ 用来判断两个值是否相等；Init()读内外参到dataset_中
     CHECK_EQ(dataset_->Init(), true);
 
     // create components（组件） and links（相互访问的指针）
@@ -36,7 +36,42 @@ bool VisualOdometry::Init() {
 
     return true;
 }
+bool VisualOdometry::Init_StereoRos() {
 
+    // read from config file
+    if (Config::SetParameterFile(config_file_path_) == false) {
+        std::cout << "不能打开配置文件！" <<std::endl;
+        return false;
+    }
+    else
+    {
+        std::cout << "可以打开配置文件，准备初始化类！" <<std::endl;
+    }
+    
+
+    dataset_ =
+        Dataset::Ptr(new Dataset(Config::Get<std::string>("ros_data_IaE_dir")));
+    
+    CHECK_EQ(dataset_->Stereo_Init(), true);
+
+    // create components（组件） and links（相互访问的指针）
+    frontend_ = Frontend::Ptr(new Frontend);
+    backend_ = Backend::Ptr(new Backend);      
+    map_ = Map::Ptr(new Map);
+    viewer_ = Viewer::Ptr(new Viewer);
+
+    frontend_->SetBackend(backend_);
+    frontend_->SetMap(map_);
+    frontend_->SetViewer(viewer_);
+    frontend_->SetCameras(dataset_->GetCamera(0), dataset_->GetCamera(1));
+
+    backend_->SetMap(map_);
+    backend_->SetCameras(dataset_->GetCamera(0), dataset_->GetCamera(1));
+
+    viewer_->SetMap(map_);
+
+    return true;
+}
 void VisualOdometry::Run() {
     while (1) {
         LOG(INFO) << "VO is running";
@@ -45,11 +80,11 @@ void VisualOdometry::Run() {
             break;
         }   
     }
+    Shutdown();
+    //backend_->Stop();
+    //viewer_->Close();
 
-    backend_->Stop();
-    viewer_->Close();
-
-    LOG(INFO) << "VO exit";
+    //LOG(INFO) << "VO exit";
 }
 
 // 主程序
@@ -65,5 +100,31 @@ bool VisualOdometry::Step() {
     LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
     return success;
 }
+bool VisualOdometry::Step_ros(Frame::Ptr new_frame) {
+    
+    if (new_frame == nullptr) return false;    
+    auto t1 = std::chrono::steady_clock::now();
+    std::cout << "t1" << std::endl;
+    current_frame2_ = new_frame;
+    std::cout << "t1" << std::endl;
+
+    //bool success = frontend_->AddFrame(new_frame);
+    //Frame::Ptr y = nullptr;
+    //y = new_frame;
+    frontend_->current_frame1_ = new_frame;
+    std::cout << "t2" << std::endl;
+
+    auto t2 = std::chrono::steady_clock::now();    
+    auto time_used =
+        std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+    LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
+    return 1;
+}
+void VisualOdometry::Shutdown(){
+    backend_->Stop();
+    viewer_->Close();
+    LOG(INFO) << "VO exit";
+    }
+
 
 }  // namespace myslam

@@ -7,6 +7,7 @@
 #include "myslam/dataset.h"
 #include "myslam/frontend.h"
 #include "myslam/viewer.h"
+#include "myslam/frame.h"
 
 namespace myslam {
 
@@ -17,6 +18,7 @@ class VisualOdometry {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<VisualOdometry> Ptr;
+    Frame::Ptr current_frame2_ = nullptr;  // 当前帧
 
     /// constructor with config file
     VisualOdometry(std::string &config_path);
@@ -28,6 +30,12 @@ class VisualOdometry {
     bool Init();
 
     /**
+     * do initialization(ros datasets) things before run
+     * @return true if success
+     */
+    bool Init_StereoRos();
+
+    /**
      * start vo in the dataset
      */
     void Run();
@@ -36,6 +44,8 @@ class VisualOdometry {
      * Make a step forward in dataset
      */
     bool Step();
+    bool Step_ros(Frame::Ptr new_frame);
+    void Shutdown();
 
     /// 获取前端状态
     FrontendStatus GetFrontendStatus() const { return frontend_->GetStatus(); }

@@ -1,6 +1,6 @@
 #include "myslam/dataset.h"
 #include "myslam/frame.h"
-
+#include "myslam/config.h"
 #include <boost/format.hpp>
 #include <fstream>
 #include <opencv2/opencv.hpp>
@@ -42,6 +42,25 @@ bool Dataset::Init() {
         LOG(INFO) << "Camera " << i << " extrinsics: " << t.transpose();
     }
     fin.close();
+    current_image_index_ = 0;
+    return true;
+}
+
+bool Dataset::Stereo_Init() {
+    Vec3 t_l;
+    t_l << 0, 0, 0; 
+    Camera::Ptr new_camera_L(new Camera(Config::Get<double>("camera_l.fx"), Config::Get<double>("camera_l.fy"), Config::Get<double>("camera_l.cx"), Config::Get<double>("camera_l.cy"),
+                                          t_l.norm(), SE3(SO3(), t_l)));
+    cameras_.push_back(new_camera_L);
+    LOG(INFO) << "Left Camera " << " extrinsics: " << t_l.transpose();
+
+    Vec3 t_r;
+    t_r << Config::Get<double>("Extrinsics_x"), Config::Get<double>("Extrinsics_y"), Config::Get<double>("Extrinsics_z");
+    Camera::Ptr new_camera_R(new Camera(Config::Get<double>("camera_r.fx"), Config::Get<double>("camera_r.fy"), Config::Get<double>("camera_r.cx"), Config::Get<double>("camera_l.cy"),
+                                          t_r.norm(), SE3(SO3(), t_r)));
+    cameras_.push_back(new_camera_R);
+    LOG(INFO) << "Right Camera " << " extrinsics: " << t_r.transpose();
+
     current_image_index_ = 0;
     return true;
 }

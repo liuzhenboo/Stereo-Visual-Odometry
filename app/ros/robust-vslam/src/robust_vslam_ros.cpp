@@ -9,8 +9,19 @@
 #include<opencv2/core/core.hpp>
 #include <gflags/gflags.h>
 #include "myslam/visual_odometry.h"
+#include "myslam/frame.h"
+using namespace std;
+DEFINE_string(config_file, "/home/lzb/Projects/robust-vslam/config/default.yaml", "config file path");
+//void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
+class ImageGrabber
+{
+public:
+    ImageGrabber(myslam::VisualOdometry::Ptr pSLAM):mp_vo(pSLAM){}
 
-DEFINE_string(config_file, "./config/default.yaml", "config file path");
+    void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
+
+    myslam::VisualOdometry::Ptr mp_vo;
+};
 
 int main(int argc, char **argv){
     google::ParseCommandLineFlags(&argc, &argv, true);
@@ -19,7 +30,10 @@ int main(int argc, char **argv){
     // 初始化slam系统，传入config文件地址
     myslam::VisualOdometry::Ptr vo(
         new myslam::VisualOdometry(FLAGS_config_file));
-    assert(vo->Init_ros() == true);
+    vo->Init_StereoRos();
+    //assert(vo->Init_StereoRos() == true);
+
+    ImageGrabber igb(vo);
 
     ros::NodeHandle nh;
 
@@ -27,17 +41,21 @@ int main(int argc, char **argv){
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/cam1/image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
-    sync.registerCallback(boost::bind(&Get_stereo_data,_1,_2));
+    std::cout << "hello" <<std::endl;
+
+    sync.registerCallback(boost::bind(&ImageGrabber::Get_stereo_data,&igb,_1,_2));
 
     ros::spin();
-    vo.Shutdown();
+    vo->Shutdown();
    
     return 0;
 }
 // 回调
-void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight){
+void ImageGrabber::Get_stereo_data( const sensor_msgs::ImageConstPtr& msgLeft, const sensor_msgs::ImageConstPtr& msgRight){
     // Copy the ros image message to cv::Mat.
     // 左图
+    std::cout << "world" <<std::endl;
+
     cv_bridge::CvImageConstPtr cv_ptrLeft;
     try
     {
@@ -64,8 +82,8 @@ void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs
     image_left = cv_ptrLeft->image;
     image_right = cv_ptrRight->image;
     if (image_left.data == nullptr || image_right.data == nullptr) {
-        LOG(WARNING) << "cannot get image data from rostopic! " << current_image_index_;
-        return nullptr;
+        LOG(WARNING) << "cannot get image data from rostopic! ";
+        return ;
     }
 
     cv::Mat image_left_resized, image_right_resized;
@@ -74,19 +92,11 @@ void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs
     cv::resize(image_right, image_right_resized, cv::Size(), 0.5, 0.5,
                cv::INTER_NEAREST);
 
-    auto new_frame1 = Frame::CreateFrame();
+    myslam::Frame::Ptr new_frame1(new myslam::Frame);//myslam::Frame::CreateFrame();
     new_frame1->left_img_ = image_left_resized;
     new_frame1->right_img_ = image_right_resized;
 
-    Frame::Ptr new_frame = new_frame1;
-    if (new_frame == nullptr) return false;
-    
-    auto t1 = std::chrono::steady_clock::now();
-    bool success = frontend_->AddFrame(new_frame);
-    auto t2 = std::chrono::steady_clock::now();
-    auto time_used =
-        std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
+    mp_vo->Step_ros(new_frame1);
 
 }
 
