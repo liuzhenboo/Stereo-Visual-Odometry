@@ -133,6 +133,7 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
         // determine if we want to adjust the outlier threshold
         for (auto &ef : edges_and_features) {
             if (ef.first->chi2() > chi2_th) {
+                //std::cout << "外点误差：" << ef.first->chi2() << std::endl;
                 cnt_outlier++;
             } else {
                 cnt_inlier++;

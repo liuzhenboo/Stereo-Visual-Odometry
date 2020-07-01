@@ -81,10 +81,6 @@ void VisualOdometry::Run() {
         }   
     }
     Shutdown();
-    //backend_->Stop();
-    //viewer_->Close();
-
-    //LOG(INFO) << "VO exit";
 }
 
 // 主程序
@@ -104,21 +100,21 @@ bool VisualOdometry::Step_ros(Frame::Ptr new_frame) {
     
     if (new_frame == nullptr) return false;    
     auto t1 = std::chrono::steady_clock::now();
-    std::cout << "t1" << std::endl;
-    current_frame2_ = new_frame;
-    std::cout << "t1" << std::endl;
+    //std::cout << "t1" << std::endl;
+    //current_frame2_ = new_frame;
+    //std::cout << "t1" << std::endl;
 
-    //bool success = frontend_->AddFrame(new_frame);
+    bool success = frontend_->AddFrame(new_frame);
     //Frame::Ptr y = nullptr;
     //y = new_frame;
-    frontend_->current_frame1_ = new_frame;
-    std::cout << "t2" << std::endl;
+    //frontend_->current_frame1_ = new_frame;
+    //std::cout << "t2" << std::endl;
 
     auto t2 = std::chrono::steady_clock::now();    
     auto time_used =
         std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
     LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
-    return 1;
+    return success;
 }
 void VisualOdometry::Shutdown(){
     backend_->Stop();

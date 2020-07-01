@@ -6,30 +6,31 @@ dataset_dir_kitti: /media/lzb/18829571198/common_datasets/kitti
 dataset_dir_tum: /media/lzb/18829571198/common_datasets/euroc/MH_01_easy
 
 # ros stereo topics
-left_image_topic: /cam0/image_raw
-right_image_topic: /cam1/image_raw
+left_image_topic: /zed/zed_node/left/image_rect_color
+right_image_topic: /zed/zed_node/right/image_rect_color
 
 # don't care，it doesn't effect others.(this param is diacard)
 ros_data_IaE_dir: /
 
 # camera_L intrinsics
-camera_l.fx: 458.654
-camera_l.fy: 457.296
-camera_l.cx: 367.215
-camera_l.cy: 248.375
+camera_l.fx: 700.95
+camera_l.fy: 700.95
+camera_l.cx: 645.225
+camera_l.cy: 353.72
 
 # camera_R intrinsics
-camera_r.fx: 457.587
-camera_r.fy: 456.134
-camera_r.cx: 379.999
-camera_r.cy: 255.238
+camera_r.fx: 698.875
+camera_r.fy: 698.875
+camera_r.cx: 644.53
+camera_r.cy: 367.9595
 
-# Extrinsics
-Extrinsics_x: 0.001796
-Extrinsics_y: 0.110045
-Extrinsics_z: 0.001948
+# Extrinsics (t)
+Extrinsics_x: 0.00
+Extrinsics_y: 0.12
+Extrinsics_z: 0.00
+ 
 
 # 
 num_features: 150
 num_features_init: 50
-num_features_tracking: 50
+num_features_tracking: 20

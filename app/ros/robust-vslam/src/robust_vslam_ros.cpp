@@ -37,11 +37,11 @@ int main(int argc, char **argv){
 
     ros::NodeHandle nh;
 
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/cam0/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/cam1/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/zed/zed_node/left/image_rect_gray", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/zed/zed_node/right/image_rect_gray", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
-    std::cout << "hello" <<std::endl;
+    //std::cout << "hello" <<std::endl;
 
     sync.registerCallback(boost::bind(&ImageGrabber::Get_stereo_data,&igb,_1,_2));
 
@@ -54,8 +54,6 @@ int main(int argc, char **argv){
 void ImageGrabber::Get_stereo_data( const sensor_msgs::ImageConstPtr& msgLeft, const sensor_msgs::ImageConstPtr& msgRight){
     // Copy the ros image message to cv::Mat.
     // 左图
-    std::cout << "world" <<std::endl;
-
     cv_bridge::CvImageConstPtr cv_ptrLeft;
     try
     {
@@ -87,9 +85,9 @@ void ImageGrabber::Get_stereo_data( const sensor_msgs::ImageConstPtr& msgLeft, c
     }
 
     cv::Mat image_left_resized, image_right_resized;
-    cv::resize(image_left, image_left_resized, cv::Size(), 0.5, 0.5,
+    cv::resize(image_left, image_left_resized, cv::Size(), 0.6, 0.6,
                cv::INTER_NEAREST);
-    cv::resize(image_right, image_right_resized, cv::Size(), 0.5, 0.5,
+    cv::resize(image_right, image_right_resized, cv::Size(), 0.6, 0.6,
                cv::INTER_NEAREST);
 
     myslam::Frame::Ptr new_frame1(new myslam::Frame);//myslam::Frame::CreateFrame();

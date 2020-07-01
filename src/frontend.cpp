@@ -19,9 +19,8 @@ Frontend::Frontend() {
 }
 // 向系统输入新的图片数据
 bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
-    std::cout << "bool" << std::endl;
     current_frame_ = frame;
-    std::cout << "bool" << std::endl;
+    std::cout << "Add a New Frame!!" << std::endl;
 
     switch (status_) {
         case FrontendStatus::INITING:
@@ -52,11 +51,15 @@ bool Frontend::Track() {
     if (tracking_inliers_ > num_features_tracking_) {
         // tracking good
         status_ = FrontendStatus::TRACKING_GOOD;
+        std::cout << "跟踪良好，共跟踪" <<  tracking_inliers_ << "个" << "内点" << std::endl;
     } else if (tracking_inliers_ > num_features_tracking_bad_) {
         // tracking bad
+        std::cout << "跟踪较差，共跟踪" <<  tracking_inliers_ << "个" << "内点" << std::endl;
         status_ = FrontendStatus::TRACKING_BAD;
     } else {
         // lost
+        std::cout << "跟踪丢失，共跟踪" <<  tracking_inliers_ << "个" << "内点" << std::endl;
+
         status_ = FrontendStatus::LOST;
     }
 
@@ -269,19 +272,20 @@ int Frontend::TrackLastFrame() {
 }
 
 bool Frontend::StereoInit() {
-    std::cout << "num_features_left" << std::endl;
+    //std::cout << "num_features_left" << std::endl;
 
     int num_features_left = DetectFeatures();
-    std::cout << "num_features_left" << std::endl;
+    //std::cout << "num_features_left" << std::endl;
     int num_coor_features = FindFeaturesInRight();
     if (num_coor_features < num_features_init_) {
-        LOG(INFO) << "Stereo Init Faild...Try Again!";
+        LOG(INFO) << "初始化时，内点较少...Try Again!";
         return false;
     }
 
     bool build_map_success = BuildInitMap();
     if (build_map_success) {
         status_ = FrontendStatus::TRACKING_GOOD;
+        std::cout << "开始跟踪！！"<< std::endl;
         if (viewer_) {
             viewer_->AddCurrentFrame(current_frame_);
             viewer_->UpdateMap();
@@ -356,21 +360,29 @@ int Frontend::FindFeaturesInRight() {
 
 bool Frontend::BuildInitMap() {
     // 外参
+    //int j = 0;
     std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
     size_t cnt_init_landmarks = 0;
+
     for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {
         if (current_frame_->features_right_[i] == nullptr) continue;
-        // create map point from triangulation
+        
+        // 像素坐标转换为归一化坐标
         std::vector<Vec3> points{
             camera_left_->pixel2camera(
                 Vec2(current_frame_->features_left_[i]->position_.pt.x,
-                     current_frame_->features_left_[i]->position_.pt.y)),
+                     current_frame_->features_left_[i]->position_.pt.y), 1.0),
             camera_right_->pixel2camera(
                 Vec2(current_frame_->features_right_[i]->position_.pt.x,
-                     current_frame_->features_right_[i]->position_.pt.y))};
+                     current_frame_->features_right_[i]->position_.pt.y), 1.0)};
+        
         Vec3 pworld = Vec3::Zero();
-
-        if (triangulation(poses, points, pworld) && pworld[2] > 0) {
+        bool tria = triangulation(poses, points, pworld);
+        //std::cout << "tria:" << tria << " " << "pworld[2]:" << pworld[2] << std::endl;
+        
+        if ( tria && pworld[2] > 0) 
+        {
+            std::cout << "正在三角化地图点！" << std::endl;
             auto new_map_point = MapPoint::CreateNewMappoint();
             new_map_point->SetPos(pworld);
             new_map_point->AddObservation(current_frame_->features_left_[i]);
@@ -381,14 +393,23 @@ bool Frontend::BuildInitMap() {
             map_->InsertMapPoint(new_map_point);
         }
     }
-    current_frame_->SetKeyFrame();
-    map_->InsertKeyFrame(current_frame_);
-    backend_->UpdateMap();
 
-    LOG(INFO) << "Initial map created with " << cnt_init_landmarks
+    // 初始化地图点数目要保证一定的数目
+    if(cnt_init_landmarks >= 5)
+    {
+        LOG(INFO) << "Initial map created with " << cnt_init_landmarks
               << " map points";
-
-    return true;
+        current_frame_->SetKeyFrame();
+        map_->InsertKeyFrame(current_frame_);
+        backend_->UpdateMap();
+        return true;
+    }
+    else
+    {
+        LOG(INFO) << "Initial map created with " << cnt_init_landmarks
+              << " map points，Try again!!";
+        return false;
+    }  
 }
 
 bool Frontend::Reset() {
