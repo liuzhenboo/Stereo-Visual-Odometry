@@ -44,7 +44,7 @@ class Frontend {
         camera_left_ = left;
         camera_right_ = right;
     }
-    // ransac 剔除外点。
+    // ransac 剔除外点
     int RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2);
 
 
