@@ -26,7 +26,10 @@ class Viewer {
 
     // 增加一个当前帧
     void AddCurrentFrame(Frame::Ptr current_frame);
-
+    
+    // 后端重置
+    void Reset();
+    
     // 更新地图
     void UpdateMap();
 
