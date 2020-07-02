@@ -137,7 +137,8 @@ class Frontend {
     int num_features_tracking_ = 50;
     int num_features_tracking_bad_ = 20;
     int num_features_needed_for_keyframe_ = 80;
-
+    int init_landmarks_ = 5;
+    double feature_match_error_ = 30;
     // utilities
     cv::Ptr<cv::GFTTDetector> gftt_;  // feature detector in opencv
 };

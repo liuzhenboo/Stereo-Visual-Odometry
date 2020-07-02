@@ -13,24 +13,32 @@ right_image_topic: /zed/zed_node/right/image_rect_color
 ros_data_IaE_dir: /
 
 # camera_L intrinsics
-camera_l.fx: 700.95
-camera_l.fy: 700.95
-camera_l.cx: 645.225
-camera_l.cy: 353.72
+camera_l.fx: 699.715
+camera_l.fy: 699.715
+camera_l.cx: 648.854
+camera_l.cy: 350.34
 
 # camera_R intrinsics
-camera_r.fx: 698.875
-camera_r.fy: 698.875
-camera_r.cx: 644.53
-camera_r.cy: 367.9595
+camera_r.fx: 699.39
+camera_r.fy: 699.39
+camera_r.cx: 645.379
+camera_r.cy: 365.323
 
 # Extrinsics (t)
-Extrinsics_x: 0.00
-Extrinsics_y: 0.12
+Extrinsics_x: 0.12
+Extrinsics_y: 0.00
 Extrinsics_z: 0.00
  
 
-# 
+# feature detector
 num_features: 150
+
+# init
 num_features_init: 50
-num_features_tracking: 20
+init_landmarks: 5
+feature_match_error: 30
+
+# tracking
+num_features_tracking: 30
+num_features_tracking_bad: 10
+num_features_needed_for_keyframe : 80

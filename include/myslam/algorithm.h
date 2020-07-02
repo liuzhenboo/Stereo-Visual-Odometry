@@ -24,10 +24,11 @@ inline bool triangulation1(const std::vector<SE3> &poses,
         A.block<1, 4>(2 * i + 1, 0) = points[i][1] * m.row(2) - m.row(1);
     }
     auto svd = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
-    pt_world = (svd.matrixV().col(3) / svd.matrixV()(3, 3)).head<3>();
-    //std::cout << svd.singularValues()[3] / svd.singularValues()[2] << std::endl;
+    pt_world = -(svd.matrixV().col(3) / svd.matrixV()(3, 3)).head<3>();
+    std::cout << pt_world[2] << std::endl;
     if (svd.singularValues()[3] / svd.singularValues()[2] < 1e-2) {
         // 解质量不好，放弃
+        
         return true;
     }
     return false;
@@ -63,6 +64,13 @@ inline bool triangulation2(const std::vector<SE3> &poses,
         return false;
     }
 }
+/**
+ * zed相机
+ * @param poses     poses,
+ * @param points    points in normalized plane
+ * @param pt_world  triangulated point in the world
+ * @return true if success
+ */
 inline bool triangulation(const std::vector<SE3> &poses,
                    const std::vector<Vec3> points, Vec3 &pt_world){
 
@@ -71,11 +79,12 @@ inline bool triangulation(const std::vector<SE3> &poses,
     Vec3 x_r = points[1];
     Vec3 t = poses[1].translation();
     double s;
-    s = t[1]/(x_r[1] - x_l[1]);
+    s = -t[0]/(x_r[0] - x_l[0]);
     if(s > 0)
     {
         pt_world = s*x_l;
         std::cout << "s:" << s << std::endl;
+
         return true;
     }
     else

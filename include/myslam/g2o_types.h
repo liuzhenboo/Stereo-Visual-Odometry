@@ -66,6 +66,7 @@ class EdgeProjectionPoseOnly : public g2o::BaseUnaryEdge<2, Vec2, VertexPose> {
     EdgeProjectionPoseOnly(const Vec3 &pos, const Mat33 &K)
         : _pos3d(pos), _K(K) {}
 
+    // 误差项
     virtual void computeError() override {
         const VertexPose *v = static_cast<VertexPose *>(_vertices[0]);
         SE3 T = v->estimate();

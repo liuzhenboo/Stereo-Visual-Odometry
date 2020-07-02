@@ -16,11 +16,16 @@ Frontend::Frontend() {
         cv::GFTTDetector::create(Config::Get<int>("num_features"), 0.01, 20);
     num_features_init_ = Config::Get<int>("num_features_init");
     num_features_ = Config::Get<int>("num_features");
+    num_features_tracking_bad_ = Config::Get<int>("num_features_tracking_bad");
+    num_features_needed_for_keyframe_ = Config::Get<int>("num_features_needed_for_keyframe");
+    init_landmarks_ = Config::Get<int>("init_landmarks");
+    feature_match_error_ = Config::Get<int>("feature_match_error");
+
 }
 // 向系统输入新的图片数据
 bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
     current_frame_ = frame;
-    std::cout << "Add a New Frame!!" << std::endl;
+    std::cout << "Add a New Stereo Frame!!" << std::endl;
 
     switch (status_) {
         case FrontendStatus::INITING:
@@ -44,8 +49,9 @@ bool Frontend::Track() {
         current_frame_->SetPose(relative_motion_ * last_frame_->Pose());
     }
 
-    // 不提取特征点吗？
+    // 不提特征点
     int num_track_last = TrackLastFrame();
+    // 根据三维点来计算，类似于PnP(Perspective-n-Point)
     tracking_inliers_ = EstimateCurrentPose();
 
     if (tracking_inliers_ > num_features_tracking_) {
@@ -155,13 +161,15 @@ int Frontend::EstimateCurrentPose() {
     // vertex
     VertexPose *vertex_pose = new VertexPose();  // camera vertex_pose
     vertex_pose->setId(0);
-    vertex_pose->setEstimate(current_frame_->Pose());
+    // 这里不是应该设置T_wc，但是改为T_wc之后，跟踪极易丢失！
+    vertex_pose->setEstimate( (current_frame_->Pose()) );
     optimizer.addVertex(vertex_pose);
 
     // K
     Mat33 K = camera_left_->K();
-
+    
     // edges
+    // 一元边，利用跟踪得到的(二维特征点，三维地图点)的对应关系来计算当前pose
     int index = 1;
     std::vector<EdgeProjectionPoseOnly *> edges;
     std::vector<Feature::Ptr> features;
@@ -279,15 +287,17 @@ bool Frontend::StereoInit() {
     int num_features_left = DetectFeatures();
     //std::cout << "num_features_left" << std::endl;
     int num_coor_features = FindFeaturesInRight();
+    //int inliers = CV_RANSAC();
+
     if (num_coor_features < num_features_init_) {
-        LOG(INFO) << "初始化时，内点较少...Try Again!";
+        LOG(INFO) << "初始化地图时，左右图像匹配点较少...Try Again!";
         return false;
     }
 
     bool build_map_success = BuildInitMap();
     if (build_map_success) {
         status_ = FrontendStatus::TRACKING_GOOD;
-        std::cout << "开始跟踪！！"<< std::endl;
+        std::cout << "双目初始化成功，开始跟踪！！"<< std::endl;
         if (viewer_) {
             viewer_->AddCurrentFrame(current_frame_);
             viewer_->UpdateMap();
@@ -343,10 +353,11 @@ int Frontend::FindFeaturesInRight() {
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
-
     int num_good_pts = 0;
     for (size_t i = 0; i < status.size(); ++i) {
-        if (status[i]) {
+        //if (status[i] && ((kps_left[i].x - kps_right[i].x)*(kps_left[i].x - kps_right[i].x) <= feature_match_error_)) {
+        if (status[i] && ((kps_left[i].y - kps_right[i].y)*(kps_left[i].y - kps_right[i].y) <= feature_match_error_)) {
+        //if (status[i]){ 
             cv::KeyPoint kp(kps_right[i], 7);
             Feature::Ptr feat(new Feature(current_frame_, kp));
             feat->is_on_left_image_ = false;
@@ -365,7 +376,8 @@ bool Frontend::BuildInitMap() {
     //int j = 0;
     std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
     size_t cnt_init_landmarks = 0;
-
+    std::cout << "正在初始化地图！" << std::endl;
+    double mean_depth = 0;
     for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {
         if (current_frame_->features_right_[i] == nullptr) continue;
         
@@ -383,8 +395,7 @@ bool Frontend::BuildInitMap() {
         //std::cout << "tria:" << tria << " " << "pworld[2]:" << pworld[2] << std::endl;
         
         if ( tria && pworld[2] > 0) 
-        {
-            std::cout << "正在三角化地图点！" << std::endl;
+        {   
             auto new_map_point = MapPoint::CreateNewMappoint();
             new_map_point->SetPos(pworld);
             new_map_point->AddObservation(current_frame_->features_left_[i]);
@@ -393,14 +404,15 @@ bool Frontend::BuildInitMap() {
             current_frame_->features_right_[i]->map_point_ = new_map_point;
             cnt_init_landmarks++;
             map_->InsertMapPoint(new_map_point);
+            mean_depth += pworld[2];
         }
     }
 
     // 初始化地图点数目要保证一定的数目
-    if(cnt_init_landmarks >= 5)
+    if(cnt_init_landmarks >= init_landmarks_)
     {
         LOG(INFO) << "Initial map created with " << cnt_init_landmarks
-              << " map points";
+              << " map points," << " the mean depth is " << mean_depth/cnt_init_landmarks;
         current_frame_->SetKeyFrame();
         map_->InsertKeyFrame(current_frame_);
         backend_->UpdateMap();
