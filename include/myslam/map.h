@@ -20,7 +20,6 @@ class Map {
     typedef std::unordered_map<unsigned long, Frame::Ptr> KeyframesType;
 
     Map() {}
-
     /// 增加一个关键帧
     void InsertKeyFrame(Frame::Ptr frame);
     /// 增加一个地图顶点

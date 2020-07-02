@@ -1,13 +1,15 @@
 #include <opencv2/opencv.hpp>
-
 #include "myslam/algorithm.h"
 #include "myslam/backend.h"
 #include "myslam/config.h"
 #include "myslam/feature.h"
-#include "myslam/frontend.h"
+#include "myslam/visual_odometry.h"
+
 #include "myslam/g2o_types.h"
 #include "myslam/map.h"
 #include "myslam/viewer.h"
+#include "myslam/frontend.h"
+
 
 namespace myslam {
 
@@ -49,7 +51,7 @@ bool Frontend::Track() {
         current_frame_->SetPose(relative_motion_ * last_frame_->Pose());
     }
 
-    // 不提特征点
+    // 不提特征点，通过光流估计特征点位置
     int num_track_last = TrackLastFrame();
     // 根据三维点来计算，类似于PnP(Perspective-n-Point)
     tracking_inliers_ = EstimateCurrentPose();
@@ -85,8 +87,8 @@ bool Frontend::InsertKeyframe() {
     current_frame_->SetKeyFrame();
     map_->InsertKeyFrame(current_frame_);
 
-    LOG(INFO) << "Set frame " << current_frame_->id_ << " as keyframe "
-              << current_frame_->keyframe_id_;
+    LOG(INFO) << "第" << current_frame_->id_  << "帧即将丢失，设置其为第"
+              << current_frame_->keyframe_id_ << "个关键帧";
 
     SetObservationsForKeyFrame();
     DetectFeatures();  // detect new features
@@ -167,7 +169,7 @@ int Frontend::EstimateCurrentPose() {
 
     // K
     Mat33 K = camera_left_->K();
-    
+
     // edges
     // 一元边，利用跟踪得到的(二维特征点，三维地图点)的对应关系来计算当前pose
     int index = 1;
@@ -230,6 +232,7 @@ int Frontend::EstimateCurrentPose() {
 
     for (auto &feat : features) {
         if (feat->is_outlier_) {
+            // 释放内存资源
             feat->map_point_.reset();
             feat->is_outlier_ = false;  // maybe we can still use it in future
         }
@@ -239,28 +242,26 @@ int Frontend::EstimateCurrentPose() {
 
 int Frontend::TrackLastFrame() {
     // use LK flow to estimate points in the right image
-    std::vector<cv::Point2f> kps_last, kps_current;
-    for (auto &kp : last_frame_->features_left_) {
+    std::vector<cv::Point2f> points_last, points_current;
+    for (auto &feature : last_frame_->features_left_) {
         //lock()函数用来判断weak_ptr指向的对象是否存在，是否被释放调；
         //如果对象存在，lock()函数返回一个指向共享对象的shared_ptr，否则返回一个空的shared_ptr.
-        if (kp->map_point_.lock()) {
+        points_last.push_back(feature->position_.pt);
+        auto mp = feature->map_point_.lock();
+        if (mp) {
             // use project point
-            auto mp = kp->map_point_.lock();
-            auto px =
-                camera_left_->world2pixel(mp->pos_, current_frame_->Pose());
-            kps_last.push_back(kp->position_.pt);
-            kps_current.push_back(cv::Point2f(px[0], px[1]));
+            auto px = camera_left_->world2pixel(mp->pos_, current_frame_->Pose());
+            points_current.push_back(cv::Point2f(px[0], px[1]));
         } else {
-            kps_last.push_back(kp->position_.pt);
-            kps_current.push_back(kp->position_.pt);
+            points_current.push_back(feature->position_.pt);
         }
     }
 
     std::vector<uchar> status;
     Mat error;
     cv::calcOpticalFlowPyrLK(
-        last_frame_->left_img_, current_frame_->left_img_, kps_last,
-        kps_current, status, error, cv::Size(11, 11), 3,
+        last_frame_->left_img_, current_frame_->left_img_, points_last,
+        points_current, status, error, cv::Size(11, 11), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
@@ -269,15 +270,15 @@ int Frontend::TrackLastFrame() {
 
     for (size_t i = 0; i < status.size(); ++i) {
         if (status[i]) {
-            cv::KeyPoint kp(kps_current[i], 7);
+            cv::KeyPoint kp(points_current[i], 7);
             Feature::Ptr feature(new Feature(current_frame_, kp));
             feature->map_point_ = last_frame_->features_left_[i]->map_point_;
             current_frame_->features_left_.push_back(feature);
             num_good_pts++;
         }
     }
+    LOG(INFO) << "通过前图的特征点位置，在当前图估计到 " << num_good_pts << " 个特征点";
 
-    LOG(INFO) << "Find " << num_good_pts << " in the last image.";
     return num_good_pts;
 }
 
@@ -328,37 +329,45 @@ int Frontend::DetectFeatures() {
     return cnt_detected;
 }
 
+// 没有利用外参
 int Frontend::FindFeaturesInRight() {
     // use LK flow to estimate points in the right image
-    std::vector<cv::Point2f> kps_left, kps_right; // 2维坐标
-    for (auto &kp : current_frame_->features_left_) {
-        kps_left.push_back(kp->position_.pt);
-        auto mp = kp->map_point_.lock();
+    std::vector<cv::Point2f> points_left, points_right; 
+    
+    // 先把左图的特征点位置存放到points_left，然后在points_right对应的位置上存放可能的匹配坐标.
+        for (auto &feature : current_frame_->features_left_) {
+        // points_left
+        points_left.push_back(feature->position_.pt);
+        // points_right
+        auto mp = feature->map_point_.lock();// 查看feature对应的mappoint是否存在；
+        mp = nullptr; //debug
         if (mp) {
             // use projected points as initial guess
-            auto px =
-                camera_right_->world2pixel(mp->pos_, current_frame_->Pose());
-            kps_right.push_back(cv::Point2f(px[0], px[1]));
+            auto px = camera_right_->world2pixel(mp->pos_, current_frame_->Pose());
+            points_right.push_back(cv::Point2f(px[0], px[1]));
         } else {
             // use same pixel in left iamge
-            kps_right.push_back(kp->position_.pt);
+            points_right.push_back(feature->position_.pt);
         }
     }
 
     std::vector<uchar> status;
     Mat error;
     cv::calcOpticalFlowPyrLK(
-        current_frame_->left_img_, current_frame_->right_img_, kps_left,
-        kps_right, status, error, cv::Size(11, 11), 3,
+        current_frame_->left_img_, current_frame_->right_img_, points_left,
+        points_right, status, error, cv::Size(11, 11), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
+    
     int num_good_pts = 0;
     for (size_t i = 0; i < status.size(); ++i) {
-        //if (status[i] && ((kps_left[i].x - kps_right[i].x)*(kps_left[i].x - kps_right[i].x) <= feature_match_error_)) {
-        if (status[i] && ((kps_left[i].y - kps_right[i].y)*(kps_left[i].y - kps_right[i].y) <= feature_match_error_)) {
+        // debug
+        //if (status[i] && ((points_left[i].x - points_right[i].x)*(points_left[i].x - points_right[i].x) <= feature_match_error_)) {
+        if (status[i] && ((points_left[i].y - points_right[i].y)*(points_left[i].y - points_right[i].y) <= feature_match_error_)) {
         //if (status[i]){ 
-            cv::KeyPoint kp(kps_right[i], 7);
+            // feature与frame关系更新
+            cv::KeyPoint kp(points_right[i], 7);
             Feature::Ptr feat(new Feature(current_frame_, kp));
             feat->is_on_left_image_ = false;
             current_frame_->features_right_.push_back(feat);
@@ -367,7 +376,8 @@ int Frontend::FindFeaturesInRight() {
             current_frame_->features_right_.push_back(nullptr);
         }
     }
-    LOG(INFO) << "Find " << num_good_pts << " in the right image.";
+
+    LOG(INFO) << "通过左图的特征点位置，在右图估计到 " << num_good_pts << " 个特征点";
     return num_good_pts;
 }
 
@@ -428,10 +438,16 @@ bool Frontend::BuildInitMap() {
 
 bool Frontend::Reset() {
     LOG(INFO) << "Reset is not implemented. ";
+    //status_ = FrontendStatus::INITING;
+    vo_ -> Reset();
     return true;
 }
 int Frontend::RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2){
     return 0;
+}
+void Frontend::Set_vo(VisualOdometry* vo)
+{
+    vo_ = vo;
 }
 
 }  // namespace myslam

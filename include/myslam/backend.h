@@ -40,6 +40,9 @@ class Backend {
     /// 关闭后端线程
     void Stop();
 
+    // 重置后端
+    void Reset();
+
    private:
     /// 后端线程
     void BackendLoop();

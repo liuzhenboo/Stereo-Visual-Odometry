@@ -3,17 +3,18 @@
 #define MYSLAM_FRONTEND_H
 
 #include <opencv2/features2d.hpp>
+//#include "myslam/visual_odometry.h"
 
-#include "myslam/common_include.h"
 #include "myslam/frame.h"
 #include "myslam/map.h"
 
 namespace myslam {
-
+class VisualOdometry;
 class Backend;
 class Viewer;
 
 enum class FrontendStatus { INITING, TRACKING_GOOD, TRACKING_BAD, LOST };
+
 
 /**
  * 前端
@@ -25,19 +26,21 @@ class Frontend {
     typedef std::shared_ptr<Frontend> Ptr;
     //bool Reset();
     Frame::Ptr current_frame_ = nullptr;  // 当前帧
-        Frame::Ptr current_frame1_ = nullptr;  // 当前帧
+    Frame::Ptr current_frame1_ = nullptr;  // 当前帧
+    
     Frontend();
 
     /// 外部接口，添加一个帧并计算其定位结果
     bool AddFrame(Frame::Ptr frame);
 
     /// Set函数
+    void Set_vo(VisualOdometry* vo);
     void SetMap(Map::Ptr map) { map_ = map; }
 
     void SetBackend(std::shared_ptr<Backend> backend) { backend_ = backend; }
 
     void SetViewer(std::shared_ptr<Viewer> viewer) { viewer_ = viewer; }
-
+    void SetStatus(FrontendStatus status){status_ = status;}
     FrontendStatus GetStatus() const { return status_; }
 
     void SetCameras(Camera::Ptr left, Camera::Ptr right) {
@@ -123,6 +126,7 @@ class Frontend {
     Camera::Ptr camera_left_ = nullptr;   // 左侧相机
     Camera::Ptr camera_right_ = nullptr;  // 右侧相机
 
+    VisualOdometry* vo_ = nullptr;
     Map::Ptr map_ = nullptr;
     std::shared_ptr<Backend> backend_ = nullptr;
     std::shared_ptr<Viewer> viewer_ = nullptr;

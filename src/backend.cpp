@@ -12,6 +12,12 @@ Backend::Backend() {
     backend_thread_ = std::thread(std::bind(&Backend::BackendLoop, this));
 }
 
+void Backend::Reset(){
+    //std::unique_lock<std::mutex> lock(data_mutex_);
+    //map_.reset(new Map);
+
+}
+
 void Backend::UpdateMap() {
     std::unique_lock<std::mutex> lock(data_mutex_);
     map_update_.notify_one();

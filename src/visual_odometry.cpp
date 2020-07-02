@@ -1,6 +1,7 @@
-#include "myslam/visual_odometry.h"
 #include <chrono>
 #include "myslam/config.h"
+#include "myslam/frontend.h"
+#include "myslam/visual_odometry.h"
 
 namespace myslam {
 
@@ -60,6 +61,7 @@ bool VisualOdometry::Init_StereoRos() {
     map_ = Map::Ptr(new Map);
     viewer_ = Viewer::Ptr(new Viewer);
 
+    frontend_->Set_vo(this);
     frontend_->SetBackend(backend_);
     frontend_->SetMap(map_);
     frontend_->SetViewer(viewer_);
@@ -120,7 +122,13 @@ void VisualOdometry::Shutdown(){
     backend_->Stop();
     viewer_->Close();
     LOG(INFO) << "VO exit";
-    }
+}
 
+// 跟踪失败之后重置系统。
+// 先重置后端优化，显示，再给跟踪线程初始化标志位。
+void VisualOdometry::Reset(){
+
+    frontend_ -> SetStatus(FrontendStatus::INITING);
+}
 
 }  // namespace myslam

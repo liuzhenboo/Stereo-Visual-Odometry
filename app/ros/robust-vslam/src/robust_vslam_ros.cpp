@@ -16,11 +16,11 @@ DEFINE_string(config_file, "/home/lzb/Projects/robust-vslam/config/default.yaml"
 class ImageGrabber
 {
 public:
-    ImageGrabber(myslam::VisualOdometry::Ptr pSLAM):mp_vo(pSLAM){}
+    ImageGrabber(myslam::VisualOdometry* pSLAM):mp_vo(pSLAM){}
 
     void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
 
-    myslam::VisualOdometry::Ptr mp_vo;
+    myslam::VisualOdometry* mp_vo;
 };
 
 int main(int argc, char **argv){
@@ -28,7 +28,7 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "ros_stereo");
     ros::start();
     // 初始化slam系统，传入config文件地址
-    myslam::VisualOdometry::Ptr vo(
+    myslam::VisualOdometry* vo(
         new myslam::VisualOdometry(FLAGS_config_file));
     vo->Init_StereoRos();
     //assert(vo->Init_StereoRos() == true);
@@ -46,7 +46,7 @@ int main(int argc, char **argv){
     sync.registerCallback(boost::bind(&ImageGrabber::Get_stereo_data,&igb,_1,_2));
 
     ros::spin();
-    vo->Shutdown();
+    //vo->Shutdown();
    
     return 0;
 }
@@ -90,7 +90,7 @@ void ImageGrabber::Get_stereo_data( const sensor_msgs::ImageConstPtr& msgLeft, c
     cv::resize(image_right, image_right_resized, cv::Size(), 0.6, 0.6,
                cv::INTER_NEAREST);
 
-    myslam::Frame::Ptr new_frame1(new myslam::Frame);//myslam::Frame::CreateFrame();
+    myslam::Frame::Ptr new_frame1 = myslam::Frame::CreateFrame();//myslam::Frame::CreateFrame();
     new_frame1->left_img_ = image_left_resized;
     new_frame1->right_img_ = image_right_resized;
 
