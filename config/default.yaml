@@ -34,11 +34,11 @@ Extrinsics_z: 0.00
 num_features: 150
 
 # init
-num_features_init: 30
+num_features_init: 20
 init_landmarks: 5
 feature_match_error: 40
 
 # tracking
 num_features_tracking: 30
-num_features_tracking_bad: 10
-num_features_needed_for_keyframe : 100
+num_features_tracking_bad: 20
+num_features_needed_for_keyframe : 60

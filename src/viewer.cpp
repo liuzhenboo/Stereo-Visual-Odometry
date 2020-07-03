@@ -11,13 +11,6 @@ Viewer::Viewer() {
     viewer_thread_ = std::thread(std::bind(&Viewer::ThreadLoop, this));
 }
 
-void Reset(){
-    active_keyframes_.clear();
-    active_landmarks_.clear();
-    current_frame_ = nullptr;
-    map_updated_ = false;
-}
-
 void Viewer::Close() {
     viewer_running_ = false;
     viewer_thread_.join();

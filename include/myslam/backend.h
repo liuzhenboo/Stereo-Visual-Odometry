@@ -1,7 +1,3 @@
-//
-// Created by gaoxiang on 19-5-2.
-//
-
 #ifndef MYSLAM_BACKEND_H
 #define MYSLAM_BACKEND_H
 
@@ -34,7 +30,7 @@ class Backend {
     /// 设置地图
     void SetMap(std::shared_ptr<Map> map) { map_ = map; }
 
-    /// 触发地图更新，启动优化
+    /// 后端线程启动。触发地图更新，启动优化
     void UpdateMap();
 
     /// 关闭后端线程

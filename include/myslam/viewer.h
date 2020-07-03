@@ -28,7 +28,12 @@ class Viewer {
     void AddCurrentFrame(Frame::Ptr current_frame);
     
     // 后端重置
-    void Reset();
+    void Reset(){
+    active_keyframes_.clear();
+    active_landmarks_.clear();
+    current_frame_ = nullptr;
+    map_updated_ = false;
+    }
     
     // 更新地图
     void UpdateMap();

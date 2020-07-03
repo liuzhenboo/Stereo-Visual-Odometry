@@ -51,6 +51,17 @@ class Map {
     /// 清理map中观测数量为零的点
     void CleanMap();
 
+    // 重置地图
+    void Reset_Map(){
+        std::unique_lock<std::mutex> lck(data_mutex_);
+        landmarks_.clear();
+        active_landmarks_.clear();
+        keyframes_.clear();
+        active_keyframes_.clear();
+        current_frame_ = nullptr;
+        num_active_keyframes_ = 7;
+    }
+
    private:
     // 将旧的关键帧置为不活跃状态
     void RemoveOldKeyframe();

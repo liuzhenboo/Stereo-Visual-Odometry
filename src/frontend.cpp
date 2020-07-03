@@ -69,6 +69,7 @@ bool Frontend::Track() {
         std::cout << "跟踪丢失，共跟踪" <<  tracking_inliers_ << "个" << "内点" << std::endl;
 
         status_ = FrontendStatus::LOST;
+        return false;
     }
 
     InsertKeyframe();
@@ -437,7 +438,7 @@ bool Frontend::BuildInitMap() {
 }
 
 bool Frontend::Reset() {
-    LOG(INFO) << "Reset is not implemented. ";
+    LOG(INFO) << "跟踪丢失，重新初始化！. ";
     //status_ = FrontendStatus::INITING;
     vo_ -> Reset();
     return true;

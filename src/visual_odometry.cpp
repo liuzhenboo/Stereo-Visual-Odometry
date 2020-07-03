@@ -127,8 +127,10 @@ void VisualOdometry::Shutdown(){
 // 跟踪失败之后重置系统。
 // 先重置地图，后端优化，显示，再给跟踪线程初始化标志位。
 void VisualOdometry::Reset(){
-    backend_ -> Reset();
-    frontend_ -> SetStatus(FrontendStatus::INITING);
+    map_->Reset_Map();
+    backend_->Reset();
+    viewer_->Reset();
+    frontend_->SetStatus(FrontendStatus::INITING);
 }
 
 }  // namespace myslam

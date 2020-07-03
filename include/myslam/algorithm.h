@@ -83,7 +83,7 @@ inline bool triangulation(const std::vector<SE3> &poses,
     if(s > 0)
     {
         pt_world = s*x_l;
-        std::cout << "s:" << s << std::endl;
+        //std::cout << "s:" << s << std::endl;
 
         return true;
     }
