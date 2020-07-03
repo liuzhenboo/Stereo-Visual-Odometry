@@ -41,7 +41,10 @@ feature_match_error: 40
 # tracking
 num_features_tracking: 30
 num_features_tracking_bad: 20
-num_features_needed_for_keyframe : 60
+num_features_needed_for_keyframe: 60
 
 # sliding window size
 num_active_keyframes: 7
+
+#mode stereo_f2f, f2localmap
+track_mode: stereoicp_f2f

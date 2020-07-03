@@ -22,6 +22,7 @@ Frontend::Frontend() {
     num_features_needed_for_keyframe_ = Config::Get<int>("num_features_needed_for_keyframe");
     init_landmarks_ = Config::Get<int>("init_landmarks");
     feature_match_error_ = Config::Get<int>("feature_match_error");
+    track_mode_ = Config::Get<std::string>("track_mode");
 
 }
 // 向系统输入新的图片数据
@@ -31,7 +32,7 @@ bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
 
     switch (status_) {
         case FrontendStatus::INITING:
-            StereoInit();
+            StereoInit_f2f();
             break;
         case FrontendStatus::TRACKING_GOOD:
         case FrontendStatus::TRACKING_BAD:
@@ -45,13 +46,292 @@ bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
     last_frame_ = current_frame_;
     return true;
 }
-bool Frontend::Track(){
-    return F2LocalMap_Track();
-
+bool Frontend::StereoInit_f2f(){
+    int num_features_left = DetectFeatures();
+    Vec3 t;
+    t << 0.0, 0.0, 0.0;
+    current_frame_->SetPose(SE3(SO3(),t));
+    last_frame_ = current_frame_;
+    status_ = FrontendStatus::TRACKING_GOOD;
+    return true;
 }
-bool F2F_Track(){
 
+bool Frontend::StereoInit() {
+    //std::cout << "num_features_left" << std::endl;
 
+    int num_features_left = DetectFeatures();
+    //std::cout << "num_features_left" << std::endl;
+    int num_coor_features = FindFeaturesInRight();
+    //int inliers = CV_RANSAC();
+
+    if (num_coor_features < num_features_init_) {
+        LOG(INFO) << "初始化地图时，左右图像匹配点较少...Try Again!";
+        return false;
+    }
+
+    bool build_map_success = BuildInitMap();
+    if (build_map_success) {
+        status_ = FrontendStatus::TRACKING_GOOD;
+        std::cout << "双目初始化成功，开始跟踪！！"<< std::endl;
+        if (viewer_) {
+            viewer_->AddCurrentFrame(current_frame_);
+            viewer_->UpdateMap();
+        }
+        return true;
+    }
+    return false;
+}
+
+bool Frontend::BuildInitMap() {
+    // 外参
+    //int j = 0;
+    std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
+    size_t cnt_init_landmarks = 0;
+    std::cout << "正在初始化地图！" << std::endl;
+    double mean_depth = 0;
+    for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {
+        if (current_frame_->features_right_[i] == nullptr) continue;
+        
+        // 像素坐标转换为归一化坐标
+        std::vector<Vec3> points{
+            camera_left_->pixel2camera(
+                Vec2(current_frame_->features_left_[i]->position_.pt.x,
+                     current_frame_->features_left_[i]->position_.pt.y), 1.0),
+            camera_right_->pixel2camera(
+                Vec2(current_frame_->features_right_[i]->position_.pt.x,
+                     current_frame_->features_right_[i]->position_.pt.y), 1.0)};
+        
+        Vec3 pworld = Vec3::Zero();
+        bool tria = triangulation(poses, points, pworld);
+        //std::cout << "tria:" << tria << " " << "pworld[2]:" << pworld[2] << std::endl;
+        
+        if ( tria && pworld[2] > 0) 
+        {   
+            auto new_map_point = MapPoint::CreateNewMappoint();
+            new_map_point->SetPos(pworld);
+            new_map_point->AddObservation(current_frame_->features_left_[i]);
+            new_map_point->AddObservation(current_frame_->features_right_[i]);
+            current_frame_->features_left_[i]->map_point_ = new_map_point;
+            current_frame_->features_right_[i]->map_point_ = new_map_point;
+            cnt_init_landmarks++;
+            map_->InsertMapPoint(new_map_point);
+            mean_depth += pworld[2];
+        }
+    }
+
+    // 初始化地图点数目要保证一定的数目
+    if(cnt_init_landmarks >= init_landmarks_)
+    {
+        LOG(INFO) << "Initial map created with " << cnt_init_landmarks
+              << " map points," << " the mean depth is " << mean_depth/cnt_init_landmarks;
+        current_frame_->SetKeyFrame();
+        map_->InsertKeyFrame(current_frame_);
+        backend_->UpdateMap();
+        return true;
+    }
+    else
+    {
+        LOG(INFO) << "Initial map created with " << cnt_init_landmarks
+              << " map points，Try again!!";
+        return false;
+    }  
+}
+
+int Frontend::DetectFeatures() {
+    cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
+    for (auto &feat : current_frame_->features_left_) {
+        cv::rectangle(mask, feat->position_.pt - cv::Point2f(10, 10),
+                      feat->position_.pt + cv::Point2f(10, 10), 0, CV_FILLED);
+    }
+
+    std::vector<cv::KeyPoint> keypoints;
+    gftt_->detect(current_frame_->left_img_, keypoints, mask);
+
+    int cnt_detected = 0;
+    for (auto &kp : keypoints) {
+        current_frame_->features_left_.push_back(
+            Feature::Ptr(new Feature(current_frame_, kp)));
+        cnt_detected++;
+    }
+
+    LOG(INFO) << "Detect " << cnt_detected << " new features";
+    return cnt_detected;
+}
+
+// 没有利用外参
+int Frontend::FindFeaturesInRight() {
+    // use LK flow to estimate points in the right image
+    std::vector<cv::Point2f> points_left, points_right; 
+    
+    // 先把左图的特征点位置存放到points_left，然后在points_right对应的位置上存放可能的匹配坐标.
+        for (auto &feature : current_frame_->features_left_) {
+        // points_left
+        points_left.push_back(feature->position_.pt);
+        // points_right
+        auto mp = feature->map_point_.lock();// 查看feature对应的mappoint是否存在；
+        mp = nullptr; //debug
+        if (mp) {
+            // use projected points as initial guess
+            auto px = camera_right_->world2pixel(mp->pos_, current_frame_->Pose());
+            points_right.push_back(cv::Point2f(px[0], px[1]));
+        } else {
+            // use same pixel in left iamge
+            points_right.push_back(feature->position_.pt);
+        }
+    }
+
+    std::vector<uchar> status;
+    Mat error;
+    cv::calcOpticalFlowPyrLK(
+        current_frame_->left_img_, current_frame_->right_img_, points_left,
+        points_right, status, error, cv::Size(11, 11), 3,
+        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                         0.01),
+        cv::OPTFLOW_USE_INITIAL_FLOW);
+    
+    int num_good_pts = 0;
+    for (size_t i = 0; i < status.size(); ++i) {
+        // debug
+        //if (status[i] && ((points_left[i].x - points_right[i].x)*(points_left[i].x - points_right[i].x) <= feature_match_error_)) {
+        if (status[i] && ((points_left[i].y - points_right[i].y)*(points_left[i].y - points_right[i].y) <= feature_match_error_)) {
+        //if (status[i]){ 
+            // feature与frame关系更新
+            cv::KeyPoint kp(points_right[i], 7);
+            Feature::Ptr feat(new Feature(current_frame_, kp));
+            feat->is_on_left_image_ = false;
+            current_frame_->features_right_.push_back(feat);
+            num_good_pts++;
+        } else {
+            current_frame_->features_right_.push_back(nullptr);
+        }
+    }
+
+    LOG(INFO) << "通过左图的特征点位置，在右图估计到 " << num_good_pts << " 个特征点";
+    return num_good_pts;
+}
+
+bool Frontend::Track(){
+    if(track_mode_ == "stereoicp_f2f"){
+        
+        return StereoF2F_ICP_SVD_Track();
+    }
+    else
+    {
+        return F2LocalMap_Track();
+    }
+}
+
+bool Frontend::StereoF2F_ICP_SVD_Track(){
+    int num_features_left = DetectFeatures();
+    //std::cout << "num_features_left" << std::endl;
+    std::vector<cv::Point2f> matched_t1_left;
+    std::vector<cv::Point2f> matched_t1_right;
+    std::vector<cv::Point2f> matched_t2_left;
+    std::vector<cv::Point2f> matched_t2_right;
+    int num_f2f_trackedfeatures = Find_FourImage_MatchedFeatures(matched_t1_left, matched_t1_right, matched_t2_left, matched_t2_right);
+
+    std::vector<cv::Point3f> _3d_points_t1, _3d_points_t2;
+    cv::Point3f temp_point3f_t1, temp_point3f_t2;
+    std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
+
+    Vec3 pworld1 = Vec3::Zero();
+    Vec3 pworld2 = Vec3::Zero();
+
+    for (size_t i = 0; i < matched_t1_left.size(); ++i){
+    std::vector<Vec3> points1{
+            camera_left_->pixel2camera(
+                Vec2(matched_t1_left[i].x,
+                     matched_t1_left[i].y), 1.0),
+            camera_right_->pixel2camera(
+                Vec2(matched_t1_right[i].x,
+                     matched_t1_right[i].y), 1.0)};
+    std::vector<Vec3> points2{
+            camera_left_->pixel2camera(
+                Vec2(matched_t2_left[i].x,
+                     matched_t2_left[i].y), 1.0),
+            camera_right_->pixel2camera(
+                Vec2(matched_t2_right[i].x,
+                     matched_t2_right[i].y), 1.0)};
+    bool tria1 = triangulation(poses, points1, pworld1);
+    bool tria2 = triangulation(poses, points2, pworld2);
+    temp_point3f_t1.x = pworld1[0];   
+    temp_point3f_t1.y = pworld1[1];
+    temp_point3f_t1.z = pworld1[2];
+    temp_point3f_t2.x = pworld2[0];   
+    temp_point3f_t2.y = pworld2[1];
+    temp_point3f_t2.z = pworld2[2];
+    _3d_points_t1.push_back(temp_point3f_t1);
+    _3d_points_t2.push_back(temp_point3f_t2);
+    }
+//bool ICP_SVD_EstimateCurrentPose(const std::vector<cv::Point3f>&pts1, const std::vector<cv::Point3f>&pts2, cv::Mat &R, cv::Mat &t){
+    Eigen::Matrix3d R;
+    Eigen::Vector3d t;
+    Vec3 t1;
+    ICP_SVD_EstimateCurrentPose(_3d_points_t1, _3d_points_t2, R, t);
+
+// Eigen::Matrix3d &R, Eigen::Vector3d &t
+    if(num_f2f_trackedfeatures >= num_features_tracking_)
+    {
+    //Eigen::Matrix<double, 3, 3> e_R;
+    //e_R << (R.at(0, 0), R.at(0, 1), R(0, 2), R(1, 0), R(1, 1), R(1, 2), R(2, 0), R(2, 1), R(2, 2));
+    SO3 s_R(R);
+    t1 << t(0,0), t(0,1), t(0,2);
+    current_frame_->SetPose(SE3(s_R, t1));
+    LOG(INFO) << "跟踪" << num_f2f_trackedfeatures << " 个特征点";
+    return true;
+    }
+    else
+    {
+        LOG(INFO) << "跟踪失败，只跟踪 " << num_f2f_trackedfeatures << " 个特征点";
+        return false;
+    }
+}
+
+int Frontend::Find_FourImage_MatchedFeatures(std::vector<cv::Point2f> &matched_t1_left, std::vector<cv::Point2f> &matched_t1_right, 
+                                    std::vector<cv::Point2f> &matched_t2_left, std::vector<cv::Point2f> &matched_t2_right)
+{    
+    std::vector<cv::Point2f> points_t1_left, points_t1_right, points_t2_left, points_t2_right; 
+    for (auto &feature : current_frame_->features_left_) {
+        points_t1_left.push_back(feature->position_.pt);
+        points_t1_right.push_back(feature->position_.pt);
+        points_t2_left.push_back(feature->position_.pt);
+        points_t2_right.push_back(feature->position_.pt);
+    }
+    // 3次LK光流跟踪
+    std::vector<uchar> status1, status2, status3;
+    cv::Mat error1,error2,error3;
+    // 当前时刻左图与当前右图
+    cv::calcOpticalFlowPyrLK(
+        current_frame_->left_img_, current_frame_->right_img_, points_t2_left,
+        points_t2_right, status1, error1, cv::Size(11, 11), 3,
+        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                         0.01),
+        cv::OPTFLOW_USE_INITIAL_FLOW);
+    // 当前时刻左图与上一时刻左图
+    cv::calcOpticalFlowPyrLK(
+        current_frame_->left_img_, last_frame_->left_img_, points_t2_left,
+        points_t1_left, status2, error2, cv::Size(11, 11), 3,
+        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                         0.01),
+        cv::OPTFLOW_USE_INITIAL_FLOW);
+    // 当前时刻左图与上一时刻右图
+    cv::calcOpticalFlowPyrLK(
+        current_frame_->left_img_, last_frame_->right_img_, points_t2_left,
+        points_t1_right, status3, error3, cv::Size(11, 11), 3,
+        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                         0.01),
+        cv::OPTFLOW_USE_INITIAL_FLOW);
+    int sum_trackedfeature = 0;
+    for (size_t i = 0; i < status1.size(); ++i) {
+        if(status1[i] && status2[i] && status3[i]){
+            matched_t1_left.push_back(points_t1_left[i]);
+            matched_t1_right.push_back(points_t1_right[i]);
+            matched_t2_left.push_back(points_t2_left[i]);
+            matched_t2_right.push_back(points_t2_right[i]);
+            sum_trackedfeature++;
+        }
+    }
+    return sum_trackedfeature;   
 }
 
 bool Frontend::F2LocalMap_Track() {
@@ -62,7 +342,7 @@ bool Frontend::F2LocalMap_Track() {
     // 不提特征点，通过光流估计特征点位置
     int num_track_last = TrackLastFrame();
     // 根据三维点来计算，类似于PnP(Perspective-n-Point)
-    tracking_inliers_ = G2O_LocalMap2F_EstimateCurrentPose();
+    tracking_inliers_ = G2O_F2LocalMap_EstimateCurrentPose();
 
     if (tracking_inliers_ > num_features_tracking_) {
         // tracking good
@@ -87,79 +367,56 @@ bool Frontend::F2LocalMap_Track() {
     return true;
 }
 
-bool Frontend::InsertKeyframe() {
-    if (tracking_inliers_ >= num_features_needed_for_keyframe_) {
-        // still have enough features, don't insert keyframe
-        return false;
-    }
-    // current frame is a new keyframe
-    current_frame_->SetKeyFrame();
-    map_->InsertKeyFrame(current_frame_);
+bool ICP_SVD_EstimateCurrentPose(const std::vector<cv::Point3f>&pts1, const std::vector<cv::Point3f>&pts2, Eigen::Matrix3d &R, Eigen::Vector3d &t){
+  cv::Point3f p1, p2;     // center of mass
+  int N = pts1.size();
+  for (int i = 0; i < N; i++) {
+    p1 += pts1[i];
+    p2 += pts2[i];
+  }
+  p1 = cv::Point3f(cv::Vec3f(p1) / N);
+  p2 = cv::Point3f(cv::Vec3f(p2) / N);
+  std::vector<cv::Point3f> q1(N), q2(N); // remove the center
+  for (int i = 0; i < N; i++) {
+    q1[i] = pts1[i] - p1;
+    q2[i] = pts2[i] - p2;
+  }
 
-    LOG(INFO) << "第" << current_frame_->id_  << "帧即将丢失，设置其为第"
-              << current_frame_->keyframe_id_ << "个关键帧";
+  // compute q1*q2^T
+  Eigen::Matrix3d W = Eigen::Matrix3d::Zero();
+  for (int i = 0; i < N; i++) {
+    W += Eigen::Vector3d(q1[i].x, q1[i].y, q1[i].z) * Eigen::Vector3d(q2[i].x, q2[i].y, q2[i].z).transpose();
+  }
+  std::cout << "W=" << W << std::endl;
 
-    SetObservationsForKeyFrame();
-    DetectFeatures();  // detect new features
+  // SVD on W
+  Eigen::JacobiSVD<Eigen::Matrix3d> svd(W, Eigen::ComputeFullU | Eigen::ComputeFullV);
+  Eigen::Matrix3d U = svd.matrixU();
+  Eigen::Matrix3d V = svd.matrixV();
 
-    // track in right image
-    FindFeaturesInRight();
-    // triangulate map points
-    TriangulateNewPoints();
-    // update backend because we have a new keyframe
-    backend_->UpdateMap();
+  std::cout << "U=" << U << std::endl;
+  std::cout << "V=" << V << std::endl;
 
-    if (viewer_) viewer_->UpdateMap();
+  Eigen::Matrix3d R_ = U * (V.transpose());
+  if (R_.determinant() < 0) {
+    R_ = -R_;
+  }
+  Eigen::Vector3d t_ = Eigen::Vector3d(p1.x, p1.y, p1.z) - R_ * Eigen::Vector3d(p2.x, p2.y, p2.z);
+  R = R_;
+  t = t_;
+  // convert to cv::Mat
+  /*R = (cv::Mat_<double>(3, 3) <<
+    R_(0, 0), R_(0, 1), R_(0, 2),
+    R_(1, 0), R_(1, 1), R_(1, 2),
+    R_(2, 0), R_(2, 1), R_(2, 2)
+  );
+  t = (cv::Mat_<double>(3, 1) << t_(0, 0), t_(1, 0), t_(2, 0));*/
 
-    return true;
 }
 
-void Frontend::SetObservationsForKeyFrame() {
-    for (auto &feat : current_frame_->features_left_) {
-        auto mp = feat->map_point_.lock();
-        if (mp) mp->AddObservation(feat);
-    }
-}
-
-int Frontend::TriangulateNewPoints() {
-    std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
-    SE3 current_pose_Twc = current_frame_->Pose().inverse();
-    int cnt_triangulated_pts = 0;
-    for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {
-        if (current_frame_->features_left_[i]->map_point_.expired() &&
-            current_frame_->features_right_[i] != nullptr) {
-            // 左图的特征点未关联地图点且存在右图匹配点，尝试三角化
-            std::vector<Vec3> points{
-                camera_left_->pixel2camera(
-                    Vec2(current_frame_->features_left_[i]->position_.pt.x,
-                         current_frame_->features_left_[i]->position_.pt.y)),
-                camera_right_->pixel2camera(
-                    Vec2(current_frame_->features_right_[i]->position_.pt.x,
-                         current_frame_->features_right_[i]->position_.pt.y))};
-            Vec3 pworld = Vec3::Zero();
-
-            if (triangulation(poses, points, pworld) && pworld[2] > 0) {
-                auto new_map_point = MapPoint::CreateNewMappoint();
-                pworld = current_pose_Twc * pworld;
-                new_map_point->SetPos(pworld);
-                new_map_point->AddObservation(
-                    current_frame_->features_left_[i]);
-                new_map_point->AddObservation(
-                    current_frame_->features_right_[i]);
-
-                current_frame_->features_left_[i]->map_point_ = new_map_point;
-                current_frame_->features_right_[i]->map_point_ = new_map_point;
-                map_->InsertMapPoint(new_map_point);
-                cnt_triangulated_pts++;
-            }
-        }
-    }
-    LOG(INFO) << "new landmarks: " << cnt_triangulated_pts;
-    return cnt_triangulated_pts;
-}
 
 // slide window
-int Frontend::G2O_LocalMap2F_EstimateCurrentPose(){
+int Frontend::G2O_F2LocalMap_EstimateCurrentPose(){
     // setup g2o
     typedef g2o::BlockSolver_6_3 BlockSolverType;
     typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType>
@@ -250,11 +507,76 @@ int Frontend::G2O_LocalMap2F_EstimateCurrentPose(){
     return features.size() - cnt_outlier;
 }
 
-int Frontend::F2F_EstimateCurrentPose(){
+bool Frontend::InsertKeyframe() {
+    if (tracking_inliers_ >= num_features_needed_for_keyframe_) {
+        // still have enough features, don't insert keyframe
+        return false;
+    }
+    // current frame is a new keyframe
+    current_frame_->SetKeyFrame();
+    map_->InsertKeyFrame(current_frame_);
 
+    LOG(INFO) << "第" << current_frame_->id_  << "帧即将丢失，设置其为第"
+              << current_frame_->keyframe_id_ << "个关键帧";
 
+    SetObservationsForKeyFrame();
+    DetectFeatures();  // detect new features
+
+    // track in right image
+    FindFeaturesInRight();
+    // triangulate map points
+    TriangulateNewPoints();
+    // update backend because we have a new keyframe
+    backend_->UpdateMap();
+
+    if (viewer_) viewer_->UpdateMap();
+
+    return true;
 }
 
+void Frontend::SetObservationsForKeyFrame() {
+    for (auto &feat : current_frame_->features_left_) {
+        auto mp = feat->map_point_.lock();
+        if (mp) mp->AddObservation(feat);
+    }
+}
+
+int Frontend::TriangulateNewPoints() {
+    std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
+    SE3 current_pose_Twc = current_frame_->Pose().inverse();
+    int cnt_triangulated_pts = 0;
+    for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {
+        if (current_frame_->features_left_[i]->map_point_.expired() &&
+            current_frame_->features_right_[i] != nullptr) {
+            // 左图的特征点未关联地图点且存在右图匹配点，尝试三角化
+            std::vector<Vec3> points{
+                camera_left_->pixel2camera(
+                    Vec2(current_frame_->features_left_[i]->position_.pt.x,
+                         current_frame_->features_left_[i]->position_.pt.y)),
+                camera_right_->pixel2camera(
+                    Vec2(current_frame_->features_right_[i]->position_.pt.x,
+                         current_frame_->features_right_[i]->position_.pt.y))};
+            Vec3 pworld = Vec3::Zero();
+
+            if (triangulation(poses, points, pworld) && pworld[2] > 0) {
+                auto new_map_point = MapPoint::CreateNewMappoint();
+                pworld = current_pose_Twc * pworld;
+                new_map_point->SetPos(pworld);
+                new_map_point->AddObservation(
+                    current_frame_->features_left_[i]);
+                new_map_point->AddObservation(
+                    current_frame_->features_right_[i]);
+
+                current_frame_->features_left_[i]->map_point_ = new_map_point;
+                current_frame_->features_right_[i]->map_point_ = new_map_point;
+                map_->InsertMapPoint(new_map_point);
+                cnt_triangulated_pts++;
+            }
+        }
+    }
+    LOG(INFO) << "new landmarks: " << cnt_triangulated_pts;
+    return cnt_triangulated_pts;
+}
 
 int Frontend::TrackLastFrame() {
     // use LK flow to estimate points in the right image
@@ -298,164 +620,12 @@ int Frontend::TrackLastFrame() {
     return num_good_pts;
 }
 
-bool Frontend::StereoInit() {
-    //std::cout << "num_features_left" << std::endl;
-
-    int num_features_left = DetectFeatures();
-    //std::cout << "num_features_left" << std::endl;
-    int num_coor_features = FindFeaturesInRight();
-    //int inliers = CV_RANSAC();
-
-    if (num_coor_features < num_features_init_) {
-        LOG(INFO) << "初始化地图时，左右图像匹配点较少...Try Again!";
-        return false;
-    }
-
-    bool build_map_success = BuildInitMap();
-    if (build_map_success) {
-        status_ = FrontendStatus::TRACKING_GOOD;
-        std::cout << "双目初始化成功，开始跟踪！！"<< std::endl;
-        if (viewer_) {
-            viewer_->AddCurrentFrame(current_frame_);
-            viewer_->UpdateMap();
-        }
-        return true;
-    }
-    return false;
-}
-
-int Frontend::DetectFeatures() {
-    cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
-    for (auto &feat : current_frame_->features_left_) {
-        cv::rectangle(mask, feat->position_.pt - cv::Point2f(10, 10),
-                      feat->position_.pt + cv::Point2f(10, 10), 0, CV_FILLED);
-    }
-
-    std::vector<cv::KeyPoint> keypoints;
-    gftt_->detect(current_frame_->left_img_, keypoints, mask);
-
-    int cnt_detected = 0;
-    for (auto &kp : keypoints) {
-        current_frame_->features_left_.push_back(
-            Feature::Ptr(new Feature(current_frame_, kp)));
-        cnt_detected++;
-    }
-
-    LOG(INFO) << "Detect " << cnt_detected << " new features";
-    return cnt_detected;
-}
-
-// 没有利用外参
-int Frontend::FindFeaturesInRight() {
-    // use LK flow to estimate points in the right image
-    std::vector<cv::Point2f> points_left, points_right; 
-    
-    // 先把左图的特征点位置存放到points_left，然后在points_right对应的位置上存放可能的匹配坐标.
-        for (auto &feature : current_frame_->features_left_) {
-        // points_left
-        points_left.push_back(feature->position_.pt);
-        // points_right
-        auto mp = feature->map_point_.lock();// 查看feature对应的mappoint是否存在；
-        mp = nullptr; //debug
-        if (mp) {
-            // use projected points as initial guess
-            auto px = camera_right_->world2pixel(mp->pos_, current_frame_->Pose());
-            points_right.push_back(cv::Point2f(px[0], px[1]));
-        } else {
-            // use same pixel in left iamge
-            points_right.push_back(feature->position_.pt);
-        }
-    }
-
-    std::vector<uchar> status;
-    Mat error;
-    cv::calcOpticalFlowPyrLK(
-        current_frame_->left_img_, current_frame_->right_img_, points_left,
-        points_right, status, error, cv::Size(11, 11), 3,
-        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
-                         0.01),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
-    
-    int num_good_pts = 0;
-    for (size_t i = 0; i < status.size(); ++i) {
-        // debug
-        //if (status[i] && ((points_left[i].x - points_right[i].x)*(points_left[i].x - points_right[i].x) <= feature_match_error_)) {
-        if (status[i] && ((points_left[i].y - points_right[i].y)*(points_left[i].y - points_right[i].y) <= feature_match_error_)) {
-        //if (status[i]){ 
-            // feature与frame关系更新
-            cv::KeyPoint kp(points_right[i], 7);
-            Feature::Ptr feat(new Feature(current_frame_, kp));
-            feat->is_on_left_image_ = false;
-            current_frame_->features_right_.push_back(feat);
-            num_good_pts++;
-        } else {
-            current_frame_->features_right_.push_back(nullptr);
-        }
-    }
-
-    LOG(INFO) << "通过左图的特征点位置，在右图估计到 " << num_good_pts << " 个特征点";
-    return num_good_pts;
-}
-
-bool Frontend::BuildInitMap() {
-    // 外参
-    //int j = 0;
-    std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
-    size_t cnt_init_landmarks = 0;
-    std::cout << "正在初始化地图！" << std::endl;
-    double mean_depth = 0;
-    for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {
-        if (current_frame_->features_right_[i] == nullptr) continue;
-        
-        // 像素坐标转换为归一化坐标
-        std::vector<Vec3> points{
-            camera_left_->pixel2camera(
-                Vec2(current_frame_->features_left_[i]->position_.pt.x,
-                     current_frame_->features_left_[i]->position_.pt.y), 1.0),
-            camera_right_->pixel2camera(
-                Vec2(current_frame_->features_right_[i]->position_.pt.x,
-                     current_frame_->features_right_[i]->position_.pt.y), 1.0)};
-        
-        Vec3 pworld = Vec3::Zero();
-        bool tria = triangulation(poses, points, pworld);
-        //std::cout << "tria:" << tria << " " << "pworld[2]:" << pworld[2] << std::endl;
-        
-        if ( tria && pworld[2] > 0) 
-        {   
-            auto new_map_point = MapPoint::CreateNewMappoint();
-            new_map_point->SetPos(pworld);
-            new_map_point->AddObservation(current_frame_->features_left_[i]);
-            new_map_point->AddObservation(current_frame_->features_right_[i]);
-            current_frame_->features_left_[i]->map_point_ = new_map_point;
-            current_frame_->features_right_[i]->map_point_ = new_map_point;
-            cnt_init_landmarks++;
-            map_->InsertMapPoint(new_map_point);
-            mean_depth += pworld[2];
-        }
-    }
-
-    // 初始化地图点数目要保证一定的数目
-    if(cnt_init_landmarks >= init_landmarks_)
-    {
-        LOG(INFO) << "Initial map created with " << cnt_init_landmarks
-              << " map points," << " the mean depth is " << mean_depth/cnt_init_landmarks;
-        current_frame_->SetKeyFrame();
-        map_->InsertKeyFrame(current_frame_);
-        backend_->UpdateMap();
-        return true;
-    }
-    else
-    {
-        LOG(INFO) << "Initial map created with " << cnt_init_landmarks
-              << " map points，Try again!!";
-        return false;
-    }  
-}
-
 bool Frontend::Reset() {
     LOG(INFO) << "跟踪丢失，重新初始化！. ";
     //status_ = FrontendStatus::INITING;
     vo_ -> Reset();
+    current_frame_ = nullptr;
+    last_frame_ = nullptr;
     return true;
 }
 int Frontend::RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2){

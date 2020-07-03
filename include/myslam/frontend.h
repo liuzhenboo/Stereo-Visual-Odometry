@@ -38,7 +38,7 @@ class Frontend {
     void SetMap(Map::Ptr map) { map_ = map; }
 
     void SetBackend(std::shared_ptr<Backend> backend) { backend_ = backend; }
-
+    bool StereoInit_f2f();
     void SetViewer(std::shared_ptr<Viewer> viewer) { viewer_ = viewer; }
     void SetStatus(FrontendStatus status){status_ = status;}
     FrontendStatus GetStatus() const { return status_; }
@@ -50,16 +50,30 @@ class Frontend {
     // ransac 剔除外点
     int RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2);
 
-
+    int Find_FourImage_MatchedFeatures( std::vector<cv::Point2f> &matched_t1_left, 
+                                        std::vector<cv::Point2f> &matched_t1_right, 
+                                        std::vector<cv::Point2f> &matched_t2_left, 
+                                        std::vector<cv::Point2f> &matched_t2_right);
    private:
     /**
-     * Track in normal mode
+     * Track inference
      * @return true if success
      */
     bool Track();
-    bool F2LocalMap_Track();
-    bool F2F_Track();
+
     /**
+     * 跟踪局部地图模式
+     * @return true if success
+     */
+    bool F2LocalMap_Track();
+
+    /**
+     * 双目帧间跟踪，先三角化每一帧的三维点，然后利用ICP计算位姿变换.
+     * 只考虑运动，不考虑结构（地图结构）
+     * @return true if sucess
+     */
+    bool ICP_SVD_EstimateCurrentPose(const std::vector<cv::Point3f>&pts1, const std::vector<cv::Point3f>&pts2, Eigen::Matrix3d &R, Eigen::Vector3d &t);
+    /**  
      * Reset when lost
      * @return true if success
      */
@@ -72,16 +86,16 @@ class Frontend {
     int TrackLastFrame();
 
     /**
-     * estimate current frame's pose
+     * estimate current frame's pose，简单的滑动窗口
      * @return num of inliers
      */
-    int G2O_LocalMap2F_EstimateCurrentPose();
+    int G2O_F2LocalMap_EstimateCurrentPose();
 
     /**
      * estimate current frame's pose
      * @return num of inliers
      */
-    int F2F_EstimateCurrentPose();
+    bool StereoF2F_ICP_SVD_Track();
 
     /**
      * set current frame as a keyframe and insert it into backend
@@ -152,6 +166,9 @@ class Frontend {
     double feature_match_error_ = 30;
     // utilities
     cv::Ptr<cv::GFTTDetector> gftt_;  // feature detector in opencv
+
+    // tracking mode
+    std::string track_mode_ = "stereoicp_f2f";
 };
 
 }  // namespace myslam
