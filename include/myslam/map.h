@@ -3,6 +3,8 @@
 #define MAP_H
 
 #include "myslam/common_include.h"
+#include "myslam/config.h"
+
 #include "myslam/frame.h"
 #include "myslam/mappoint.h"
 
@@ -19,7 +21,7 @@ class Map {
     typedef std::unordered_map<unsigned long, MapPoint::Ptr> LandmarksType;
     typedef std::unordered_map<unsigned long, Frame::Ptr> KeyframesType;
 
-    Map() {}
+    Map() {num_active_keyframes_ = Config::Get<int>("num_active_keyframes");}
     /// 增加一个关键帧
     void InsertKeyFrame(Frame::Ptr frame);
     /// 增加一个地图顶点
@@ -59,7 +61,6 @@ class Map {
         keyframes_.clear();
         active_keyframes_.clear();
         current_frame_ = nullptr;
-        num_active_keyframes_ = 7;
     }
 
    private:

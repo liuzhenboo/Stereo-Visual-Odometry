@@ -42,3 +42,6 @@ feature_match_error: 40
 num_features_tracking: 30
 num_features_tracking_bad: 20
 num_features_needed_for_keyframe : 60
+
+# sliding window size
+num_active_keyframes: 7

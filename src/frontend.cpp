@@ -45,8 +45,16 @@ bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
     last_frame_ = current_frame_;
     return true;
 }
+bool Frontend::Track(){
+    return F2LocalMap_Track();
 
-bool Frontend::Track() {
+}
+bool F2F_Track(){
+
+
+}
+
+bool Frontend::F2LocalMap_Track() {
     if (last_frame_) {
         current_frame_->SetPose(relative_motion_ * last_frame_->Pose());
     }
@@ -54,19 +62,19 @@ bool Frontend::Track() {
     // 不提特征点，通过光流估计特征点位置
     int num_track_last = TrackLastFrame();
     // 根据三维点来计算，类似于PnP(Perspective-n-Point)
-    tracking_inliers_ = EstimateCurrentPose();
+    tracking_inliers_ = G2O_LocalMap2F_EstimateCurrentPose();
 
     if (tracking_inliers_ > num_features_tracking_) {
         // tracking good
         status_ = FrontendStatus::TRACKING_GOOD;
-        std::cout << "跟踪良好，共跟踪" <<  tracking_inliers_ << "个" << "内点" << std::endl;
+        std::cout << "跟踪良好，共跟踪地图点" <<  tracking_inliers_ << "个" << std::endl;
     } else if (tracking_inliers_ > num_features_tracking_bad_) {
         // tracking bad
-        std::cout << "跟踪较差，共跟踪" <<  tracking_inliers_ << "个" << "内点" << std::endl;
+        std::cout << "跟踪较差，共跟踪地图点" <<  tracking_inliers_ << "个" << std::endl;
         status_ = FrontendStatus::TRACKING_BAD;
     } else {
         // lost
-        std::cout << "跟踪丢失，共跟踪" <<  tracking_inliers_ << "个" << "内点" << std::endl;
+        std::cout << "跟踪丢失，共跟踪地图点" <<  tracking_inliers_ << "个" << std::endl;
 
         status_ = FrontendStatus::LOST;
         return false;
@@ -150,7 +158,8 @@ int Frontend::TriangulateNewPoints() {
     return cnt_triangulated_pts;
 }
 
-int Frontend::EstimateCurrentPose() {
+// slide window
+int Frontend::G2O_LocalMap2F_EstimateCurrentPose(){
     // setup g2o
     typedef g2o::BlockSolver_6_3 BlockSolverType;
     typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType>
@@ -240,6 +249,12 @@ int Frontend::EstimateCurrentPose() {
     }
     return features.size() - cnt_outlier;
 }
+
+int Frontend::F2F_EstimateCurrentPose(){
+
+
+}
+
 
 int Frontend::TrackLastFrame() {
     // use LK flow to estimate points in the right image

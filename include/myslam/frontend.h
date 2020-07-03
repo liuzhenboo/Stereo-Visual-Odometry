@@ -57,7 +57,8 @@ class Frontend {
      * @return true if success
      */
     bool Track();
-
+    bool F2LocalMap_Track();
+    bool F2F_Track();
     /**
      * Reset when lost
      * @return true if success
@@ -74,7 +75,13 @@ class Frontend {
      * estimate current frame's pose
      * @return num of inliers
      */
-    int EstimateCurrentPose();
+    int G2O_LocalMap2F_EstimateCurrentPose();
+
+    /**
+     * estimate current frame's pose
+     * @return num of inliers
+     */
+    int F2F_EstimateCurrentPose();
 
     /**
      * set current frame as a keyframe and insert it into backend
