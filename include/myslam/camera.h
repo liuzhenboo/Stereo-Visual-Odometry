@@ -18,12 +18,15 @@ class Camera {
     SE3 pose_;             // extrinsic, from stereo camera to single camera
     SE3 pose_inv_;         // inverse of extrinsics
 
+    cv::Mat projMatr_;  //camera param
+    //void SetprojMatrl();
     Camera();
 
     Camera(double fx, double fy, double cx, double cy, double baseline,
            const SE3 &pose)
         : fx_(fx), fy_(fy), cx_(cx), cy_(cy), baseline_(baseline), pose_(pose) {
         pose_inv_ = pose_.inverse();
+        projMatr_ = (cv::Mat_<float>(3, 4) << fx, 0., cx, -baseline*fx, 0., fy, cy, 0., 0,  0., 1., 0.);
     }
 
     SE3 pose() const { return pose_; }

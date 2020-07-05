@@ -94,7 +94,9 @@ void ImageGrabber::Get_stereo_data( const sensor_msgs::ImageConstPtr& msgLeft, c
     new_frame1->left_img_ = image_left_resized;
     new_frame1->right_img_ = image_right_resized;
 
-    mp_vo->Step_ros(new_frame1);
-
+    
+    if(!(mp_vo->Step_ros(new_frame1)))
+        {std::cout << "return" << std::endl;
+        return;}
 }
 

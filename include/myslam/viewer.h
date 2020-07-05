@@ -21,7 +21,7 @@ class Viewer {
     Viewer();
 
     void SetMap(Map::Ptr map) { map_ = map; }
-
+    
     void Close();
 
     // 增加一个当前帧
@@ -50,6 +50,8 @@ class Viewer {
     /// plot the features in current frame into an image
     cv::Mat PlotFrameImage();
 
+    // In stereoicp_f2f tracking mode, plot the features in current frame into an image
+    cv::Mat PlotFrameImage_f2f();
     Frame::Ptr current_frame_ = nullptr;
     Map::Ptr map_ = nullptr;
 

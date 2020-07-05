@@ -3,7 +3,8 @@
 
 // algorithms used in myslam
 #include "myslam/common_include.h"
-
+//using namespace std;
+//using namespace cv;
 namespace myslam {
 
 /**
@@ -80,6 +81,8 @@ inline bool triangulation(const std::vector<SE3> &poses,
     Vec3 t = poses[1].translation();
     double s;
     s = -t[0]/(x_r[0] - x_l[0]);
+    //std::cout << "s:" << s << std::endl;
+
     if(s > 0)
     {
         pt_world = s*x_l;
@@ -90,11 +93,17 @@ inline bool triangulation(const std::vector<SE3> &poses,
     else
     {
         return false;
-    }
-    
-    
-    
+    }  
 }
+/** 
+ * @param pts_1     特征点在相机坐标系坐标
+ * @param pts_2     上述对应的特征点在相机坐标系坐标
+ * @param t         外参
+ * @param K         内参
+ * @param points    三角化的结果
+ * @return true if success
+ */
+
 // converters
 inline Vec2 toVec2(const cv::Point2f p) { return Vec2(p.x, p.y); }
 

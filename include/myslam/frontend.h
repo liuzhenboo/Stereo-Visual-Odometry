@@ -4,7 +4,7 @@
 
 #include <opencv2/features2d.hpp>
 //#include "myslam/visual_odometry.h"
-
+#include "myslam/algorithm.h"
 #include "myslam/frame.h"
 #include "myslam/map.h"
 
@@ -27,9 +27,12 @@ class Frontend {
     //bool Reset();
     Frame::Ptr current_frame_ = nullptr;  // 当前帧
     Frame::Ptr current_frame1_ = nullptr;  // 当前帧
-    
+    Vec3 t_;
     Frontend();
-
+    //cv::Mat translation_;
+    double Px_ = 0;
+    double Py_ = 0;
+    double Pz_ = 0;
     /// 外部接口，添加一个帧并计算其定位结果
     bool AddFrame(Frame::Ptr frame);
 
@@ -50,10 +53,23 @@ class Frontend {
     // ransac 剔除外点
     int RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2);
 
-    int Find_FourImage_MatchedFeatures( std::vector<cv::Point2f> &matched_t1_left, 
-                                        std::vector<cv::Point2f> &matched_t1_right, 
-                                        std::vector<cv::Point2f> &matched_t2_left, 
-                                        std::vector<cv::Point2f> &matched_t2_right);
+    int Robust_Find_FourImage_MatchedFeatures( std::vector<cv::Point2f> &points_t1_left, 
+                                        std::vector<cv::Point2f> &points_t1_right, 
+                                        std::vector<cv::Point2f> &points_t2_left, 
+                                        std::vector<cv::Point2f> &points_t2_right);
+    bool triangulation_opencv(
+  const std::vector<cv::Point2f> &p_1,
+  const std::vector<cv::Point2f> &p_2, 
+  const cv::Mat &t,
+  const cv::Mat &K1,
+  const cv::Mat &K2,
+  std::vector<cv::Point3f> &points); 
+
+    bool opencv_EstimatePose_PnP(cv::Mat& projMatrl,
+                                    std::vector<cv::Point2f>&  pointsLeft_t2, 
+                                    cv::Mat& points3D_t0,
+                                    cv::Mat& rotation,
+                                    cv::Mat& translation);
    private:
     /**
      * Track inference
@@ -95,7 +111,7 @@ class Frontend {
      * estimate current frame's pose
      * @return num of inliers
      */
-    bool StereoF2F_ICP_SVD_Track();
+    bool StereoF2F_PnP_Track();
 
     /**
      * set current frame as a keyframe and insert it into backend
@@ -163,7 +179,8 @@ class Frontend {
     int num_features_tracking_bad_ = 20;
     int num_features_needed_for_keyframe_ = 80;
     int init_landmarks_ = 5;
-    double feature_match_error_ = 30;
+    double feature_match_error_ = 10;
+    double inlier_rate_ = 0.5;
     // utilities
     cv::Ptr<cv::GFTTDetector> gftt_;  // feature detector in opencv
 

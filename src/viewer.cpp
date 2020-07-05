@@ -58,7 +58,7 @@ void Viewer::ThreadLoop() {
             DrawFrame(current_frame_, green);
             FollowCurrentFrame(vis_camera);
 
-            cv::Mat img = PlotFrameImage();
+            cv::Mat img = PlotFrameImage_f2f();
             cv::imshow("image", img);
             cv::waitKey(1);
         }
@@ -83,6 +83,27 @@ cv::Mat Viewer::PlotFrameImage() {
             cv::circle(img_out, feat->position_.pt, 2, cv::Scalar(0, 250, 0),
                        2);
         }
+    }
+    return img_out;
+}
+
+cv::Mat Viewer::PlotFrameImage_f2f() {
+    cv::Mat img_out;
+    cv::cvtColor(current_frame_->left_img_, img_out, CV_GRAY2BGR);
+    for (size_t i = 0; i < current_frame_->features_left_.size(); ++i) {
+        if (!current_frame_->status_[i]) {
+            auto feat = current_frame_->features_left_[i];
+            cv::circle(img_out, feat->position_.pt, 2, cv::Scalar(0, 250, 0),
+                       2);
+        }
+        else
+        {
+            auto feat = current_frame_->features_left_[i];
+            cv::circle(img_out, feat->position_.pt, 2, cv::Scalar(0, 0, 255),
+                       2);
+            
+        }
+        
     }
     return img_out;
 }

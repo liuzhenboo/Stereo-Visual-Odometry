@@ -115,7 +115,7 @@ bool VisualOdometry::Step_ros(Frame::Ptr new_frame) {
     auto t2 = std::chrono::steady_clock::now();    
     auto time_used =
         std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
+    //LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
     return success;
 }
 void VisualOdometry::Shutdown(){

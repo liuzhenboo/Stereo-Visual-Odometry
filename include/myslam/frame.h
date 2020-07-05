@@ -56,6 +56,8 @@ struct Frame {
 
     /// 工厂构建模式，分配id 
     static std::shared_ptr<Frame> CreateFrame();
+    // feature status
+    std::vector<uchar> status_;
 };
 
 }  // namespace myslam

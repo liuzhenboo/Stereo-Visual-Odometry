@@ -23,12 +23,18 @@ Frontend::Frontend() {
     init_landmarks_ = Config::Get<int>("init_landmarks");
     feature_match_error_ = Config::Get<int>("feature_match_error");
     track_mode_ = Config::Get<std::string>("track_mode");
+    num_features_tracking_ = Config::Get<int>("num_features_tracking");
+    inlier_rate_ = Config::Get<double>("inlier_rate");
+    t_[0] = 0;
+    t_[1] = 0;
+    t_[2] = 0;
+    //cv::Mat translation_ = cv::Mat::zeros(3, 1, CV_64F);
 
 }
 // 向系统输入新的图片数据
 bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
     current_frame_ = frame;
-    std::cout << "Add a New Stereo Frame!!" << std::endl;
+   // std::cout << std::endl << "Add a New Stereo Frame!!" << std::endl;
 
     switch (status_) {
         case FrontendStatus::INITING:
@@ -36,10 +42,12 @@ bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
             break;
         case FrontendStatus::TRACKING_GOOD:
         case FrontendStatus::TRACKING_BAD:
-            Track();
+            if(!Track())
+                {status_ = FrontendStatus::LOST;
+                    return false;}//{Reset();}
             break;
         case FrontendStatus::LOST:
-            Reset();
+            //Reset();
             break;
     }
 
@@ -48,9 +56,12 @@ bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
 }
 bool Frontend::StereoInit_f2f(){
     int num_features_left = DetectFeatures();
+    // 设置初始位姿
     Vec3 t;
     t << 0.0, 0.0, 0.0;
     current_frame_->SetPose(SE3(SO3(),t));
+    std::cout << "初始位置：" << t << std::endl;
+
     last_frame_ = current_frame_;
     status_ = FrontendStatus::TRACKING_GOOD;
     return true;
@@ -154,7 +165,7 @@ int Frontend::DetectFeatures() {
         cnt_detected++;
     }
 
-    LOG(INFO) << "Detect " << cnt_detected << " new features";
+    //LOG(INFO) << "Detect " << cnt_detected << " new features";
     return cnt_detected;
 }
 
@@ -211,127 +222,247 @@ int Frontend::FindFeaturesInRight() {
 }
 
 bool Frontend::Track(){
-    if(track_mode_ == "stereoicp_f2f"){
-        
-        return StereoF2F_ICP_SVD_Track();
+    if(track_mode_ == "stereof2f_pnp"){
+        std::cout << "跟踪模式为：stereof2f_pnp" << std::endl;
+        return StereoF2F_PnP_Track();
     }
     else
     {
         return F2LocalMap_Track();
     }
 }
+bool Frontend::triangulation_opencv(
+  const std::vector<cv::Point2f> &p_1,
+  const std::vector<cv::Point2f> &p_2, 
+  const cv::Mat &t,
+  const cv::Mat &K1,
+  const cv::Mat &K2,
+  std::vector<cv::Point3f> &points) {
+  cv::Mat T1 = (cv::Mat_<float>(3, 4) <<
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0);
+  cv::Mat T2 = (cv::Mat_<float>(3, 4) <<
+    1, 0, 0, 0.12,
+    0, 1, 0, 0,
+    0, 0, 1, 0
+  );
+  // cv::Mat K1 = (cv::Mat_<double>(3, 3) << 699.39, 0, 648.854, 0, 699.715, 350.34, 0, 0, 1);
+  //Mat K = (Mat_<double>(3, 3) << 520.9, 0, 325.1, 0, 521.0, 249.7, 0, 0, 1);
+  std::vector<cv::Point2f> pts_1, pts_2;
+  for (size_t i = 0; i < p_1.size(); i++) {
+    // 将像素坐标转换至相机坐标
+    //Point2f((p_1[i].x - K.at<double>(0, 2)) / K.at<double>(0, 0), (p_1[i].y - K.at<double>(1, 2)) / K.at<double>(1, 1));
+    pts_1.push_back(cv::Point2f((p_1[i].x - K1.at<double>(0, 2)) / K1.at<double>(0, 0), (p_1[i].y - K1.at<double>(1, 2)) / K1.at<double>(1, 1)));
+    pts_2.push_back(cv::Point2f((p_2[i].x - K2.at<double>(0, 2)) / K2.at<double>(0, 0), (p_2[i].y - K2.at<double>(1, 2)) / K2.at<double>(1, 1)));
+    //std::cout << "相机系：" << pts_1[i].x << ", " << pts_1[i].y  << "---" << pts_2[i].x << ", " << pts_2[i].y << std::endl;
+  }
+  cv::Mat pts_4d;
 
-bool Frontend::StereoF2F_ICP_SVD_Track(){
+  cv::triangulatePoints(T1, T2, pts_1, pts_2, pts_4d);
+  //std::cout << pts_4d << std::endl;
+
+  // 转换成非齐次坐标
+  for (int i = 0; i < pts_4d.cols; i++) {
+    cv::Mat x = pts_4d.col(i);
+    x /= x.at<float>(3, 0); // 归一化
+    cv::Point3d p(
+      x.at<float>(0, 0),
+      x.at<float>(1, 0),
+      x.at<float>(2, 0)
+    );
+    points.push_back(p);
+  }
+  return true;
+}
+bool Frontend::StereoF2F_PnP_Track(){
     int num_features_left = DetectFeatures();
-    //std::cout << "num_features_left" << std::endl;
-    std::vector<cv::Point2f> matched_t1_left;
+    
+    // 光流跟踪前后帧
+    std::vector<cv::Point2f> matched_t1_left;  // 光流跟踪到的像素点
     std::vector<cv::Point2f> matched_t1_right;
     std::vector<cv::Point2f> matched_t2_left;
     std::vector<cv::Point2f> matched_t2_right;
-    int num_f2f_trackedfeatures = Find_FourImage_MatchedFeatures(matched_t1_left, matched_t1_right, matched_t2_left, matched_t2_right);
-
-    std::vector<cv::Point3f> _3d_points_t1, _3d_points_t2;
-    cv::Point3f temp_point3f_t1, temp_point3f_t2;
-    std::vector<SE3> poses{camera_left_->pose(), camera_right_->pose()};
-
-    Vec3 pworld1 = Vec3::Zero();
-    Vec3 pworld2 = Vec3::Zero();
-
-    for (size_t i = 0; i < matched_t1_left.size(); ++i){
-    std::vector<Vec3> points1{
-            camera_left_->pixel2camera(
-                Vec2(matched_t1_left[i].x,
-                     matched_t1_left[i].y), 1.0),
-            camera_right_->pixel2camera(
-                Vec2(matched_t1_right[i].x,
-                     matched_t1_right[i].y), 1.0)};
-    std::vector<Vec3> points2{
-            camera_left_->pixel2camera(
-                Vec2(matched_t2_left[i].x,
-                     matched_t2_left[i].y), 1.0),
-            camera_right_->pixel2camera(
-                Vec2(matched_t2_right[i].x,
-                     matched_t2_right[i].y), 1.0)};
-    bool tria1 = triangulation(poses, points1, pworld1);
-    bool tria2 = triangulation(poses, points2, pworld2);
-    temp_point3f_t1.x = pworld1[0];   
-    temp_point3f_t1.y = pworld1[1];
-    temp_point3f_t1.z = pworld1[2];
-    temp_point3f_t2.x = pworld2[0];   
-    temp_point3f_t2.y = pworld2[1];
-    temp_point3f_t2.z = pworld2[2];
-    _3d_points_t1.push_back(temp_point3f_t1);
-    _3d_points_t2.push_back(temp_point3f_t2);
+    for (auto &feature : current_frame_->features_left_) {
+        matched_t2_left.push_back(feature->position_.pt);
+        matched_t2_right.push_back(feature->position_.pt);
+        matched_t1_left.push_back(feature->position_.pt);
+        matched_t1_right.push_back(feature->position_.pt);
     }
-//bool ICP_SVD_EstimateCurrentPose(const std::vector<cv::Point3f>&pts1, const std::vector<cv::Point3f>&pts2, cv::Mat &R, cv::Mat &t){
-    Eigen::Matrix3d R;
-    Eigen::Vector3d t;
-    Vec3 t1;
-    ICP_SVD_EstimateCurrentPose(_3d_points_t1, _3d_points_t2, R, t);
+    //std::cout << "Robust_Find_FourImage_MatchedFeatures" <<std::endl;
+    int num_f2f_trackedfeatures = Robust_Find_FourImage_MatchedFeatures(matched_t1_left, matched_t1_right, matched_t2_left, matched_t2_right);
+    //std::cout << "Robust_Find_FourImage_MatchedFeatures" <<std::endl;
+    //for(int i = 0; i < matched_t1_left.size(); i++)
+    //{
+    //    std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << ",--- " << matched_t2_left[i].x << ", " << matched_t2_left[i].y << std::endl;
+    //}
+    std::cout << "当前帧提取到" << num_features_left << "个特征点，" << "其中用光流跟踪到上一帧"  << num_f2f_trackedfeatures << "个特征点" << std::endl;
+    if(num_f2f_trackedfeatures < num_features_tracking_)
+        {   std::cout << "前后帧跟踪的点过少,跟踪失败！" << std::endl;
+            return false;}
+    // ---------------------
+    //三角化上一帧跟踪到的特征点
+    // ---------------------
+    cv::Mat points3D_t0, points4D_t0;
+    cv::Mat projMatrl = camera_left_->projMatr_;
+    cv::Mat projMatrr = camera_right_->projMatr_;
+    //std::cout << projMatrl << "==" << projMatrr << std::endl;
+    
+    //std::cout << "triangulatePoints" <<std::endl;
+    cv::triangulatePoints( projMatrl,  projMatrr,  matched_t2_left,  matched_t2_right,  points4D_t0);
+    //std::cout << "triangulatePoints" <<std::endl;
 
-// Eigen::Matrix3d &R, Eigen::Vector3d &t
-    if(num_f2f_trackedfeatures >= num_features_tracking_)
-    {
-    //Eigen::Matrix<double, 3, 3> e_R;
-    //e_R << (R.at(0, 0), R.at(0, 1), R(0, 2), R(1, 0), R(1, 1), R(1, 2), R(2, 0), R(2, 1), R(2, 2));
-    SO3 s_R(R);
-    t1 << t(0,0), t(0,1), t(0,2);
-    current_frame_->SetPose(SE3(s_R, t1));
-    LOG(INFO) << "跟踪" << num_f2f_trackedfeatures << " 个特征点";
+    cv::convertPointsFromHomogeneous(points4D_t0.t(), points3D_t0);
+    //std::cout << "3D点坐标：" << std::endl << points3D_t0 << std::endl;
+
+    //---------------------------
+    //PnP估计姿态；3D->2D
+    //-----------------------------
+    cv::Mat rotation;
+    cv::Mat translation = cv::Mat::zeros(3, 1, CV_64F);
+    bool sum_estimate_pose = opencv_EstimatePose_PnP(projMatrl, matched_t1_left, points3D_t0, rotation, translation);
+    if (!sum_estimate_pose)
+        return false;
+    // 5cm,100cm
+    double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
+    if(pose_norm2 < 1 && pose_norm2 > 0.0001){
+        Px_ = Px_ + translation.at<double>(0);
+        Py_ = Py_ + translation.at<double>(1);
+        Pz_ = Pz_ + translation.at<double>(2);
+        last_frame_ = current_frame_;
+    }   
+
+    std::cout << "translation:" << std::endl << Px_ << ", " << Py_ << ", " << Pz_ << std::endl;
     return true;
+ 
+}
+bool Frontend::opencv_EstimatePose_PnP(cv::Mat& projMatrl,
+                                    std::vector<cv::Point2f>&  pointsLeft_t2, 
+                                    cv::Mat& points3D_t0,
+                                    cv::Mat& rotation,
+                                    cv::Mat& translation){
+
+
+    // ------------------------------------------------
+    // Translation (t) estimation by use solvePnPRansac
+    // ------------------------------------------------
+    cv::Mat distCoeffs = cv::Mat::zeros(4, 1, CV_64FC1);   
+    cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64FC1);
+    cv::Mat intrinsic_matrix = (cv::Mat_<float>(3, 3) << projMatrl.at<float>(0, 0), projMatrl.at<float>(0, 1), projMatrl.at<float>(0, 2),
+                                                projMatrl.at<float>(1, 0), projMatrl.at<float>(1, 1), projMatrl.at<float>(1, 2),
+                                                projMatrl.at<float>(1, 1), projMatrl.at<float>(1, 2), projMatrl.at<float>(1, 3));
+
+      int iterationsCount = 500;        // number of Ransac iterations.
+      float reprojectionError = .5;    // maximum allowed distance to consider it an inlier.
+      float confidence = 0.999;          // RANSAC successful confidence.
+      bool useExtrinsicGuess = true;
+      int flags =cv::SOLVEPNP_ITERATIVE;
+
+     
+      cv::Mat inliers; 
+      cv::solvePnPRansac( points3D_t0, pointsLeft_t2, intrinsic_matrix, distCoeffs, rvec, translation,
+                          useExtrinsicGuess, iterationsCount, reprojectionError, confidence,
+                          inliers, flags );
+     cv::Rodrigues(rvec, rotation);
+      std::cout << "其中估计位姿的内点数量为: " << inliers.size[0] << std::endl;
+      //std::cout << "inliers.size()" << inliers.size[0] << ", " << inliers.size[1] << ", " << inliers.size[2] << std::endl;
+    if((double)inliers.size[0] / (double)pointsLeft_t2.size() < inlier_rate_){
+        std::cout << "inliers / tracking point = " << (double)inliers.size[0] / (double)pointsLeft_t2.size() << ",  姿态估计时候内点过少！，跟踪失败" << std::endl;
+        return false;
     }
     else
     {
-        LOG(INFO) << "跟踪失败，只跟踪 " << num_f2f_trackedfeatures << " 个特征点";
-        return false;
+        std::cout << "inliers / tracking point: " << (double)inliers.size[0] / (double)pointsLeft_t2.size() << std::endl;
+        return true;
     }
+        
 }
 
-int Frontend::Find_FourImage_MatchedFeatures(std::vector<cv::Point2f> &matched_t1_left, std::vector<cv::Point2f> &matched_t1_right, 
-                                    std::vector<cv::Point2f> &matched_t2_left, std::vector<cv::Point2f> &matched_t2_right)
-{    
-    std::vector<cv::Point2f> points_t1_left, points_t1_right, points_t2_left, points_t2_right; 
-    for (auto &feature : current_frame_->features_left_) {
-        points_t1_left.push_back(feature->position_.pt);
-        points_t1_right.push_back(feature->position_.pt);
-        points_t2_left.push_back(feature->position_.pt);
-        points_t2_right.push_back(feature->position_.pt);
-    }
-    // 3次LK光流跟踪
-    std::vector<uchar> status1, status2, status3;
-    cv::Mat error1,error2,error3;
-    // 当前时刻左图与当前右图
+int Frontend::Robust_Find_FourImage_MatchedFeatures(std::vector<cv::Point2f> &points_t1_left, 
+                                            std::vector<cv::Point2f> &points_t1_right, 
+                                            std::vector<cv::Point2f> &points_t2_left, 
+                                            std::vector<cv::Point2f> &points_t2_right)
+{   
+    std::vector<cv::Point2f> points_final = points_t2_left; 
+
+    // 4次LK光流跟踪
+    std::vector<uchar> status1, status2, status3, status4;
+    cv::Mat error1,error2,error3,error4;
+    // 当前时刻左图与当前右图(t2_l --> t2_r)
+    //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
     cv::calcOpticalFlowPyrLK(
         current_frame_->left_img_, current_frame_->right_img_, points_t2_left,
         points_t2_right, status1, error1, cv::Size(11, 11), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
-    // 当前时刻左图与上一时刻左图
+    //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
+
+    // 当前时刻右图与上一时刻右图(t2_r --> t1_r)
     cv::calcOpticalFlowPyrLK(
-        current_frame_->left_img_, last_frame_->left_img_, points_t2_left,
-        points_t1_left, status2, error2, cv::Size(11, 11), 3,
+        current_frame_->right_img_, last_frame_->right_img_, points_t2_right,
+        points_t1_right, status2, error2, cv::Size(11, 11), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
-    // 当前时刻左图与上一时刻右图
+    //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
+
+    // 上一时刻右图与上一时刻左图(t1_r --> t1_l)
     cv::calcOpticalFlowPyrLK(
-        current_frame_->left_img_, last_frame_->right_img_, points_t2_left,
-        points_t1_right, status3, error3, cv::Size(11, 11), 3,
+        last_frame_->right_img_, last_frame_->left_img_, points_t1_right,
+        points_t1_left, status3, error3, cv::Size(11, 11), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
+
+    //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
+
+    // 上一时刻左图与当前时刻左图(t1_l --> t2_l*)
+    cv::calcOpticalFlowPyrLK(
+        last_frame_->left_img_, current_frame_->left_img_, points_t1_left,
+        points_final, status4, error4, cv::Size(11, 11), 3,
+        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                         0.01),
+        cv::OPTFLOW_USE_INITIAL_FLOW);
+    //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
+
+    // select good point
     int sum_trackedfeature = 0;
+    int good = 0;
+    bool y_error1 = false;
+    bool y_error2 = false;
+    bool xy_error = false;
     for (size_t i = 0; i < status1.size(); ++i) {
-        if(status1[i] && status2[i] && status3[i]){
-            matched_t1_left.push_back(points_t1_left[i]);
-            matched_t1_right.push_back(points_t1_right[i]);
-            matched_t2_left.push_back(points_t2_left[i]);
-            matched_t2_right.push_back(points_t2_right[i]);
-            sum_trackedfeature++;
+        if(status1[i] && status2[i] && status3[i] && status4[i]){
+            // 左右目跟踪特征点y值必须差不多 
+            if((points_t1_left[i].y - points_t1_right[i].y)*(points_t1_left[i].y - points_t1_right[i].y) <= feature_match_error_)
+                y_error1 = true;
+            else
+                y_error1 = false;
+            if((points_t2_left[i].y - points_t2_right[i].y)*(points_t2_left[i].y - points_t2_right[i].y) <= feature_match_error_)
+                y_error2 = true;
+            else
+                y_error2 = false;
+            if((std::pow((points_final[i].x - points_t2_left[i].x), 2) + std::pow((points_final[i].y - points_t2_left[i].y), 2)) <= feature_match_error_)
+                xy_error = true;
+            else
+                xy_error = false;
+            
+            if(y_error1 && y_error1 && xy_error){
+                points_t1_left[good] =  points_t1_left[i];
+                points_t1_right[good] = points_t1_right[i];
+                points_t2_left[good] = points_t2_left[i];
+                points_t2_right[good] = points_t2_right[i];
+                good++;
+            } 
         }
     }
-    return sum_trackedfeature;   
+    points_t1_left.resize(good);
+    points_t1_right.resize(good);
+    points_t2_left.resize(good);
+    points_t2_right.resize(good);
+
+    return good;   
 }
 
 bool Frontend::F2LocalMap_Track() {
@@ -367,9 +498,10 @@ bool Frontend::F2LocalMap_Track() {
     return true;
 }
 
-bool ICP_SVD_EstimateCurrentPose(const std::vector<cv::Point3f>&pts1, const std::vector<cv::Point3f>&pts2, Eigen::Matrix3d &R, Eigen::Vector3d &t){
+bool Frontend::ICP_SVD_EstimateCurrentPose(const std::vector<cv::Point3f>&pts1, const std::vector<cv::Point3f>&pts2, Eigen::Matrix3d &R_, Eigen::Vector3d &t_){
   cv::Point3f p1, p2;     // center of mass
   int N = pts1.size();
+  //std::cout << "N" << N <<std::endl;
   for (int i = 0; i < N; i++) {
     p1 += pts1[i];
     p2 += pts2[i];
@@ -387,31 +519,23 @@ bool ICP_SVD_EstimateCurrentPose(const std::vector<cv::Point3f>&pts1, const std:
   for (int i = 0; i < N; i++) {
     W += Eigen::Vector3d(q1[i].x, q1[i].y, q1[i].z) * Eigen::Vector3d(q2[i].x, q2[i].y, q2[i].z).transpose();
   }
-  std::cout << "W=" << W << std::endl;
+  //std::cout << "W=" << W << std::endl;
 
   // SVD on W
   Eigen::JacobiSVD<Eigen::Matrix3d> svd(W, Eigen::ComputeFullU | Eigen::ComputeFullV);
   Eigen::Matrix3d U = svd.matrixU();
   Eigen::Matrix3d V = svd.matrixV();
 
-  std::cout << "U=" << U << std::endl;
-  std::cout << "V=" << V << std::endl;
+  //std::cout << "U=" << U << std::endl;
+  //std::cout << "V=" << V << std::endl;
 
-  Eigen::Matrix3d R_ = U * (V.transpose());
+  R_ = U * (V.transpose());
   if (R_.determinant() < 0) {
     R_ = -R_;
   }
-  Eigen::Vector3d t_ = Eigen::Vector3d(p1.x, p1.y, p1.z) - R_ * Eigen::Vector3d(p2.x, p2.y, p2.z);
-  R = R_;
-  t = t_;
-  // convert to cv::Mat
-  /*R = (cv::Mat_<double>(3, 3) <<
-    R_(0, 0), R_(0, 1), R_(0, 2),
-    R_(1, 0), R_(1, 1), R_(1, 2),
-    R_(2, 0), R_(2, 1), R_(2, 2)
-  );
-  t = (cv::Mat_<double>(3, 1) << t_(0, 0), t_(1, 0), t_(2, 0));*/
-
+  t_ = Eigen::Vector3d(p1.x, p1.y, p1.z) - R_ * Eigen::Vector3d(p2.x, p2.y, p2.z);
+  return true;
+  
 }
 
 
@@ -626,6 +750,9 @@ bool Frontend::Reset() {
     vo_ -> Reset();
     current_frame_ = nullptr;
     last_frame_ = nullptr;
+    t_[0] = 0;
+    t_[1] = 0;
+    t_[2] = 0;
     return true;
 }
 int Frontend::RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2){

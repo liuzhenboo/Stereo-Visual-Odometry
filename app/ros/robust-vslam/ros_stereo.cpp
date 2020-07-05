@@ -29,7 +29,7 @@ int main(int argc, char **argv){
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&Get_stereo_data,_1,_2));
 
-    ros::spin();
+    ros::spinOnce();
     vo.Shutdown();
    
     return 0;
@@ -82,11 +82,15 @@ void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs
     if (new_frame == nullptr) return false;
     
     auto t1 = std::chrono::steady_clock::now();
+    std::cout <<"--------------------"<<std::endl;
     bool success = frontend_->AddFrame(new_frame);
+    std::cout <<"222222222222"<<std::endl;
+
     auto t2 = std::chrono::steady_clock::now();
     auto time_used =
         std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
     LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
+    if(!success) return;
 
 }
 
