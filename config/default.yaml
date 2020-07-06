@@ -36,7 +36,7 @@ num_features: 150
 # init
 num_features_init: 20
 init_landmarks: 5
-feature_match_error: 50
+feature_match_error: 5000
 
 # tracking
 num_features_tracking: 10
@@ -49,4 +49,9 @@ num_active_keyframes: 7
 #mode stereo_f2f, f2localmap
 track_mode: stereof2f_pnp
 
-inlier_rate: 0.1
+inlier_rate: -1
+
+# estimate pose cv::pnp_ransac
+iterationsCount: 200
+reprojectionError: 1.5
+confidence: 0.8

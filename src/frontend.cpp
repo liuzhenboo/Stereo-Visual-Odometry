@@ -25,9 +25,13 @@ Frontend::Frontend() {
     track_mode_ = Config::Get<std::string>("track_mode");
     num_features_tracking_ = Config::Get<int>("num_features_tracking");
     inlier_rate_ = Config::Get<double>("inlier_rate");
+    iterationsCount_ = Config::Get<int>("iterationsCount");
+    reprojectionError_ = Config::Get<float>("reprojectionError");
+    confidence_ = Config::Get<float>("confidence");
     t_[0] = 0;
     t_[1] = 0;
     t_[2] = 0;
+    //rotation_ << ( 1, 0, 0, 0, 1, 0, 0, 0, 1 );
     //cv::Mat translation_ = cv::Mat::zeros(3, 1, CV_64F);
 
 }
@@ -51,7 +55,7 @@ bool Frontend::AddFrame(myslam::Frame::Ptr frame) {
             break;
     }
 
-    last_frame_ = current_frame_;
+    //last_frame_ = current_frame_;
     return true;
 }
 bool Frontend::StereoInit_f2f(){
@@ -280,18 +284,16 @@ bool Frontend::StereoF2F_PnP_Track(){
     
     // 光流跟踪前后帧
     std::vector<cv::Point2f> matched_t1_left;  // 光流跟踪到的像素点
-    std::vector<cv::Point2f> matched_t1_right;
     std::vector<cv::Point2f> matched_t2_left;
     std::vector<cv::Point2f> matched_t2_right;
     for (auto &feature : current_frame_->features_left_) {
         matched_t2_left.push_back(feature->position_.pt);
         matched_t2_right.push_back(feature->position_.pt);
         matched_t1_left.push_back(feature->position_.pt);
-        matched_t1_right.push_back(feature->position_.pt);
     }
-    //std::cout << "Robust_Find_FourImage_MatchedFeatures" <<std::endl;
-    int num_f2f_trackedfeatures = Robust_Find_FourImage_MatchedFeatures(matched_t1_left, matched_t1_right, matched_t2_left, matched_t2_right);
-    //std::cout << "Robust_Find_FourImage_MatchedFeatures" <<std::endl;
+    //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" <<std::endl;
+    int num_f2f_trackedfeatures = LK_Robust_Find_MuliImage_MatchedFeatures(matched_t1_left, matched_t2_left, matched_t2_right);
+    //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" <<std::endl;
     //for(int i = 0; i < matched_t1_left.size(); i++)
     //{
     //    std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << ",--- " << matched_t2_left[i].x << ", " << matched_t2_left[i].y << std::endl;
@@ -318,23 +320,101 @@ bool Frontend::StereoF2F_PnP_Track(){
     //---------------------------
     //PnP估计姿态；3D->2D
     //-----------------------------
-    cv::Mat rotation;
+    cv::Mat rotation = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat translation = cv::Mat::zeros(3, 1, CV_64F);
+    cv::Mat delta_translation =cv::Mat::zeros(3, 1, CV_64F);
+    //for(int i = 0; i < matched_t1_left.size(); i++){
+    //    std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << "---" << matched_t2_left[i].x << ", " << matched_t2_left[i].y << std::endl;
+    //}
     bool sum_estimate_pose = opencv_EstimatePose_PnP(projMatrl, matched_t1_left, points3D_t0, rotation, translation);
     if (!sum_estimate_pose)
         return false;
-    // 5cm,100cm
+    
+    // 5cm,100cm，保证帧之间的运动合适
+    cv::Vec3f rotation_euler = rotationMatrixToEulerAngles(rotation);
     double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
-    if(pose_norm2 < 1 && pose_norm2 > 0.0001){
-        Px_ = Px_ + translation.at<double>(0);
-        Py_ = Py_ + translation.at<double>(1);
-        Pz_ = Pz_ + translation.at<double>(2);
-        last_frame_ = current_frame_;
-    }   
 
+    /*if(pose_norm2 < 1 && pose_norm2 > 0.0001){
+            std::cout << "有效的位姿估计！" << std::endl;
+            std::cout << translation << std::endl;
+            Px_ = Px_ + translation.at<double>(0);
+            Py_ = Py_ + translation.at<double>(1);
+            Pz_ = Pz_ + translation.at<double>(2);
+            last_frame_ = current_frame_;
+        } */ 
+            
+    if(abs(rotation_euler[1])<0.1 && abs(rotation_euler[0])<0.1 && abs(rotation_euler[2])<0.1)
+    {
+        double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
+        if(pose_norm2 < 1 && pose_norm2 > 0.0001){
+            std::cout << "有效的位姿估计！" << std::endl;
+            std::cout << translation << std::endl;
+            delta_translation =  rotation_ * rotation.inv() * translation;
+            std::cout << delta_translation << std::endl;
+            Px_ = Px_ + delta_translation.at<double>(0);
+            Py_ = Py_ + delta_translation.at<double>(1);
+            Pz_ = Pz_ + delta_translation.at<double>(2);
+            rotation_ = rotation_ * rotation.inv();
+            last_frame_ = current_frame_;
+        }  
+            
+
+    }else{
+
+            //std::cout   << std::endl;
+    } 
+    
     std::cout << "translation:" << std::endl << Px_ << ", " << Py_ << ", " << Pz_ << std::endl;
+    display(trajectory_, Px_, Py_);
     return true;
  
+}
+bool Frontend::isRotationMatrix(cv::Mat &R)
+{
+    cv::Mat Rt;
+    transpose(R, Rt);
+    cv::Mat shouldBeIdentity = Rt * R;
+    cv::Mat I = cv::Mat::eye(3,3, shouldBeIdentity.type());
+     
+    return  norm(I, shouldBeIdentity) < 1e-6;
+     
+}
+// Calculates rotation matrix to euler angles
+// The result is the same as MATLAB except the order
+// of the euler angles ( x and z are swapped ).
+cv::Vec3f Frontend::rotationMatrixToEulerAngles(cv::Mat &R)
+{
+ 
+    assert(isRotationMatrix(R));
+     
+    float sy = sqrt(R.at<double>(0,0) * R.at<double>(0,0) +  R.at<double>(1,0) * R.at<double>(1,0) );
+ 
+    bool singular = sy < 1e-6; // If
+ 
+    float x, y, z;
+    if (!singular)
+    {
+        x = atan2(R.at<double>(2,1) , R.at<double>(2,2));
+        y = atan2(-R.at<double>(2,0), sy);
+        z = atan2(R.at<double>(1,0), R.at<double>(0,0));
+    }
+    else
+    {
+        x = atan2(-R.at<double>(1,2), R.at<double>(1,1));
+        y = atan2(-R.at<double>(2,0), sy);
+        z = 0;
+    }
+    return cv::Vec3f(x, y, z);
+     
+}
+void Frontend::display(cv::Mat &trajectory, double p1, double p2)
+{
+    // draw estimated trajectory 
+    int x = (int)(p1*100) + 500;
+    int y = (int)(p2*100) + 500;
+    circle(trajectory, cv::Point(x, y) ,1, CV_RGB(255,0,0), 2);
+    cv::imshow( "Trajectory", trajectory );
+    cv::waitKey(1);
 }
 bool Frontend::opencv_EstimatePose_PnP(cv::Mat& projMatrl,
                                     std::vector<cv::Point2f>&  pointsLeft_t2, 
@@ -352,9 +432,9 @@ bool Frontend::opencv_EstimatePose_PnP(cv::Mat& projMatrl,
                                                 projMatrl.at<float>(1, 0), projMatrl.at<float>(1, 1), projMatrl.at<float>(1, 2),
                                                 projMatrl.at<float>(1, 1), projMatrl.at<float>(1, 2), projMatrl.at<float>(1, 3));
 
-      int iterationsCount = 500;        // number of Ransac iterations.
-      float reprojectionError = .5;    // maximum allowed distance to consider it an inlier.
-      float confidence = 0.999;          // RANSAC successful confidence.
+      int iterationsCount = iterationsCount_;        // number of Ransac iterations.
+      float reprojectionError = reprojectionError_;    // maximum allowed distance to consider it an inlier.
+      float confidence = confidence_;          // RANSAC successful confidence.
       bool useExtrinsicGuess = true;
       int flags =cv::SOLVEPNP_ITERATIVE;
 
@@ -378,16 +458,15 @@ bool Frontend::opencv_EstimatePose_PnP(cv::Mat& projMatrl,
         
 }
 
-int Frontend::Robust_Find_FourImage_MatchedFeatures(std::vector<cv::Point2f> &points_t1_left, 
-                                            std::vector<cv::Point2f> &points_t1_right, 
+int Frontend::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> &points_t1_left, 
                                             std::vector<cv::Point2f> &points_t2_left, 
                                             std::vector<cv::Point2f> &points_t2_right)
 {   
     std::vector<cv::Point2f> points_final = points_t2_left; 
 
     // 4次LK光流跟踪
-    std::vector<uchar> status1, status2, status3, status4;
-    cv::Mat error1,error2,error3,error4;
+    std::vector<uchar> status1, status2, status3;
+    cv::Mat error1,error2,error3;
     // 当前时刻左图与当前右图(t2_l --> t2_r)
     //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
     cv::calcOpticalFlowPyrLK(
@@ -398,59 +477,41 @@ int Frontend::Robust_Find_FourImage_MatchedFeatures(std::vector<cv::Point2f> &po
         cv::OPTFLOW_USE_INITIAL_FLOW);
     //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
 
-    // 当前时刻右图与上一时刻右图(t2_r --> t1_r)
+    // 当前时刻右图与上一时刻左图
     cv::calcOpticalFlowPyrLK(
-        current_frame_->right_img_, last_frame_->right_img_, points_t2_right,
-        points_t1_right, status2, error2, cv::Size(11, 11), 3,
+        current_frame_->right_img_, last_frame_->left_img_, points_t2_right,
+        points_t1_left, status2, error2, cv::Size(11, 11), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
     //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
 
-    // 上一时刻右图与上一时刻左图(t1_r --> t1_l)
-    cv::calcOpticalFlowPyrLK(
-        last_frame_->right_img_, last_frame_->left_img_, points_t1_right,
-        points_t1_left, status3, error3, cv::Size(11, 11), 3,
-        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
-                         0.01),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
-
-    //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
-
-    // 上一时刻左图与当前时刻左图(t1_l --> t2_l*)
+    // 上一时刻左图与当前时刻左图
     cv::calcOpticalFlowPyrLK(
         last_frame_->left_img_, current_frame_->left_img_, points_t1_left,
-        points_final, status4, error4, cv::Size(11, 11), 3,
+        points_final, status3, error3, cv::Size(11, 11), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         cv::OPTFLOW_USE_INITIAL_FLOW);
-    //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
 
     // select good point
-    int sum_trackedfeature = 0;
     int good = 0;
-    bool y_error1 = false;
-    bool y_error2 = false;
+    bool y_error = false;
     bool xy_error = false;
     for (size_t i = 0; i < status1.size(); ++i) {
-        if(status1[i] && status2[i] && status3[i] && status4[i]){
+        if(status1[i] && status2[i] && status3[i]){
             // 左右目跟踪特征点y值必须差不多 
-            if((points_t1_left[i].y - points_t1_right[i].y)*(points_t1_left[i].y - points_t1_right[i].y) <= feature_match_error_)
-                y_error1 = true;
-            else
-                y_error1 = false;
             if((points_t2_left[i].y - points_t2_right[i].y)*(points_t2_left[i].y - points_t2_right[i].y) <= feature_match_error_)
-                y_error2 = true;
+                y_error = true;
             else
-                y_error2 = false;
+                y_error = false;
             if((std::pow((points_final[i].x - points_t2_left[i].x), 2) + std::pow((points_final[i].y - points_t2_left[i].y), 2)) <= feature_match_error_)
                 xy_error = true;
             else
                 xy_error = false;
             
-            if(y_error1 && y_error1 && xy_error){
+            if(1 && xy_error){
                 points_t1_left[good] =  points_t1_left[i];
-                points_t1_right[good] = points_t1_right[i];
                 points_t2_left[good] = points_t2_left[i];
                 points_t2_right[good] = points_t2_right[i];
                 good++;
@@ -458,7 +519,6 @@ int Frontend::Robust_Find_FourImage_MatchedFeatures(std::vector<cv::Point2f> &po
         }
     }
     points_t1_left.resize(good);
-    points_t1_right.resize(good);
     points_t2_left.resize(good);
     points_t2_right.resize(good);
 

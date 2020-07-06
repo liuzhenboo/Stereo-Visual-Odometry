@@ -29,10 +29,13 @@ class Frontend {
     Frame::Ptr current_frame1_ = nullptr;  // 当前帧
     Vec3 t_;
     Frontend();
+    cv::Mat trajectory_ = cv::Mat::zeros(1000, 1000, CV_8UC3);
     //cv::Mat translation_;
     double Px_ = 0;
     double Py_ = 0;
     double Pz_ = 0;
+    //cv::Mat rotation_ = (cv::Mat_<float>(3, 3) << 1.0, 0., 0., 0., 1.0, 0., 0,  0., 1.0);
+    cv::Mat rotation_ = cv::Mat::eye(3, 3, CV_64F);
     /// 外部接口，添加一个帧并计算其定位结果
     bool AddFrame(Frame::Ptr frame);
 
@@ -53,8 +56,7 @@ class Frontend {
     // ransac 剔除外点
     int RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vector<std::shared_ptr<Feature>> &Features_2);
 
-    int Robust_Find_FourImage_MatchedFeatures( std::vector<cv::Point2f> &points_t1_left, 
-                                        std::vector<cv::Point2f> &points_t1_right, 
+    int LK_Robust_Find_MuliImage_MatchedFeatures( std::vector<cv::Point2f> &points_t1_left, 
                                         std::vector<cv::Point2f> &points_t2_left, 
                                         std::vector<cv::Point2f> &points_t2_right);
     bool triangulation_opencv(
@@ -70,13 +72,17 @@ class Frontend {
                                     cv::Mat& points3D_t0,
                                     cv::Mat& rotation,
                                     cv::Mat& translation);
+    cv::Vec3f rotationMatrixToEulerAngles(cv::Mat &R);
+    bool isRotationMatrix(cv::Mat &R);
+
+
    private:
     /**
      * Track inference
      * @return true if success
      */
     bool Track();
-
+    void display(cv::Mat &trajectory, double px, double pz);
     /**
      * 跟踪局部地图模式
      * @return true if success
@@ -181,6 +187,9 @@ class Frontend {
     int init_landmarks_ = 5;
     double feature_match_error_ = 10;
     double inlier_rate_ = 0.5;
+    int iterationsCount_ = 500;
+    float reprojectionError_ = 0.5;
+    float confidence_ = 0.999;
     // utilities
     cv::Ptr<cv::GFTTDetector> gftt_;  // feature detector in opencv
 

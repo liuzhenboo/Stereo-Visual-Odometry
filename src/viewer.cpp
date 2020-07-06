@@ -8,7 +8,7 @@
 namespace myslam {
 
 Viewer::Viewer() {
-    viewer_thread_ = std::thread(std::bind(&Viewer::ThreadLoop, this));
+    //viewer_thread_ = std::thread(std::bind(&Viewer::ThreadLoop, this));
 }
 
 void Viewer::Close() {
