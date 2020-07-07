@@ -82,9 +82,14 @@ bool Frontend::AddFrame(myslam::Frame::Ptr frame)
         break;
     case FrontendStatus::TRACKING_GOOD:
     case FrontendStatus::TRACKING_BAD:
-        if (!Track())
+        if (Track())
         {
-            status_ = FrontendStatus::LOST;
+            last_frame_ = current_frame_;
+            return true;
+        }
+        else
+        {
+            last_frame_ = current_frame_;
             return false;
         } //{Reset();}
         break;
@@ -291,7 +296,7 @@ bool Frontend::Track()
     if (track_mode_ == "stereof2f_pnp")
     {
         std::cout << "跟踪模式为：stereof2f_pnp" << std::endl;
-        return StereoF2F_PnP_Track();
+        return LK_StereoF2F_PnP_Track();
     }
     else
     {
@@ -343,23 +348,14 @@ bool Frontend::triangulation_opencv(
 }
 bool Frontend::StereoF2F_PnP_Track()
 {
-    //int num_features_left = DetectFeatures();
+    int num_features_left = DetectFeatures();
 
     // 光流跟踪前后帧
     std::vector<cv::Point2f> matched_t1_left; // 光流跟踪到的像素点
     std::vector<cv::Point2f> matched_t2_left;
     std::vector<cv::Point2f> matched_t2_right;
     std::vector<cv::Point2f> matched_t1_right;
-
-    /*for (auto &feature : current_frame_->features_left_)
-    {
-        matched_t2_left.push_back(feature->position_.pt);
-        matched_t2_right.push_back(feature->position_.pt);
-        matched_t1_left.push_back(feature->position_.pt);
-        matched_t1_right.push_back(feature->position_.pt);
-    }*/
     //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" << std::endl;
-    //int num_f2f_trackedfeatures = LK_Robust_Find_MuliImage_MatchedFeatures(matched_t2_left, matched_t1_left, matched_t1_right);
     int num_f2f_trackedfeatures = ORB_Robust_Find_MuliImage_MatchedFeatures(matched_t2_left, matched_t1_left, matched_t1_right);
     if (num_f2f_trackedfeatures < num_features_tracking_)
     {
@@ -404,7 +400,10 @@ bool Frontend::StereoF2F_PnP_Track()
     //}
     //bool sum_estimate_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, //translation);
     //std::cout << "slambook_EstimatePose_PnP " << std::endl;
-    bool sum_estimate_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
+    bool valid_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
+    if (!valid_pose)
+        return true;
+
     //std::cout << "slambook_EstimatePose_PnP " << std::endl;
 
     //bool sum_estimate_pose = opencv_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
@@ -433,29 +432,178 @@ bool Frontend::StereoF2F_PnP_Track()
     //if (1)
     {
         double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
-        if (pose_norm2 < 1 && pose_norm2 > 0.00001)
+        if (pose_norm2 < 10 && pose_norm2 > 0.00001)
         {
-            std::cout << "有效的位姿估计！" << std::endl;
+            /*std::cout << "有效的位姿估计！" << std::endl;
             delta_translation = rotation_ * translation;
             std::cout << delta_translation << std::endl;
             Px_ = Px_ + delta_translation.at<double>(0);
             Py_ = Py_ + delta_translation.at<double>(1);
             Pz_ = Pz_ + delta_translation.at<double>(2);
             rotation_ = rotation_ * rotation;
-            last_frame_ = current_frame_;
+            last_frame_ = current_frame_;*/
+            cv::Mat addup = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
+
+            cv::Mat rigid_body_transformation;
+            cv::hconcat(rotation, translation, rigid_body_transformation);
+            cv::vconcat(rigid_body_transformation, addup, rigid_body_transformation);
+            rigid_body_transformation = rigid_body_transformation.inv();
+            frame_pose_ = frame_pose_ * rigid_body_transformation;
+        }
+        else
+        {
+            return false;
         }
     }
     else
     {
 
-        //std::cout   << std::endl;
+        return false;
     }
+    cv::Mat xyz = frame_pose_.col(3).clone();
+    Px_ = xyz.at<double>(0);
+    Pz_ = xyz.at<double>(2);
+    Py_ = xyz.at<double>(1);
 
     std::cout << "global translation:" << std::endl
               << Px_ << ", " << Py_ << ", " << Pz_ << std::endl;
     display(trajectory_, Px_, Pz_);
     return true;
 }
+
+bool Frontend::LK_StereoF2F_PnP_Track()
+{
+    int num_features_left = DetectFeatures();
+    if (num_features_left < 40)
+        return false;
+
+    // 光流跟踪前后帧
+    std::vector<cv::Point2f> matched_t1_left; // 光流跟踪到的像素点
+    std::vector<cv::Point2f> matched_t2_left;
+    std::vector<cv::Point2f> matched_t2_right;
+    std::vector<cv::Point2f> matched_t1_right;
+    for (auto &feature : current_frame_->features_left_)
+    {
+        matched_t2_left.push_back(feature->position_.pt);
+        matched_t1_left.push_back(feature->position_.pt);
+        matched_t1_right.push_back(feature->position_.pt);
+    }
+
+    //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" << std::endl;
+    int num_f2f_trackedfeatures = LK_Robust_Find_MuliImage_MatchedFeatures(matched_t2_left, matched_t1_left, matched_t1_right);
+    if (num_f2f_trackedfeatures < num_features_tracking_)
+    {
+        last_frame_ = current_frame_;
+        return false;
+    }
+    //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" << std::endl;
+    /*for (int i = 0; i < matched_t1_left.size(); i++)
+    {
+        std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << ",--- " << matched_t1_right[i].x << ", " << matched_t1_right[i].y << std::endl;
+    }*/
+    //std::cout << "当前帧提取到" << num_features_left << "个特征点，"
+    //          << "其中用光流跟踪到上一帧" << num_f2f_trackedfeatures << "个特征点" << std::endl;
+    //if (num_f2f_trackedfeatures < num_features_tracking_)
+    //{
+    //    std::cout << "前后帧跟踪的点过少,跟踪失败！" << std::endl;
+    //    return false;
+    //}
+    // ---------------------
+    //三角化上一帧跟踪到的特征点
+    // ---------------------
+    cv::Mat points3D_t0, points4D_t0;
+    cv::Mat projMatrl = camera_left_->projMatr_;
+    cv::Mat projMatrr = camera_right_->projMatr_;
+    //std::cout << projMatrl << "==" << projMatrr << std::endl;
+
+    //std::cout << "triangulatePoints" << std::endl;
+    cv::triangulatePoints(projMatrl, projMatrr, matched_t1_left, matched_t1_right, points4D_t0);
+    //std::cout << "triangulatePoints" << std::endl;
+
+    cv::convertPointsFromHomogeneous(points4D_t0.t(), points3D_t0);
+    //std::cout << "3D点坐标：" << std::endl << points3D_t0 << std::endl;
+
+    //---------------------------
+    //PnP估计姿态；3D->2D
+    //-----------------------------
+    cv::Mat rotation = cv::Mat::eye(3, 3, CV_64F);
+    cv::Mat translation = cv::Mat::zeros(3, 1, CV_64F);
+    cv::Mat delta_translation = cv::Mat::zeros(3, 1, CV_64F);
+    //for(int i = 0; i < matched_t1_left.size(); i++){
+    //    std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << "---" << matched_t2_left[i].x << ", " << matched_t2_left[i].y << std::endl;
+    //}
+    //bool sum_estimate_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, //translation);
+    //std::cout << "slambook_EstimatePose_PnP " << std::endl;
+    bool enough_inlier = opencv_EstimatePose_PnP(projMatrl, matched_t1_right, points3D_t0, rotation, translation);
+    if (!enough_inlier)
+        return false;
+
+    //std::cout << "slambook_EstimatePose_PnP " << std::endl;
+
+    //bool sum_estimate_pose = opencv_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
+    //if (!sum_estimate_pose)
+    //    return false;
+    std::cout << "f2f rotation:" << std::endl
+              << rotation << std::endl;
+    std::cout << "f2f translation:" << std::endl
+              << translation << std::endl;
+
+    // 5cm,100cm，保证帧之间的运动合适
+    cv::Vec3f rotation_euler = rotationMatrixToEulerAngles(rotation);
+    /*double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));*/
+
+    /*if (pose_norm2 < 1 && pose_norm2 > 0.0001)
+    {
+        std::cout << "有效的位姿估计！" << std::endl;
+        std::cout << translation << std::endl;
+        Px_ = Px_ + translation.at<double>(0);
+        Py_ = Py_ + translation.at<double>(1);
+        Pz_ = Pz_ + translation.at<double>(2);
+        last_frame_ = current_frame_;
+    }*/
+
+    if (abs(rotation_euler[1]) < 0.1 && abs(rotation_euler[0]) < 0.1 && abs(rotation_euler[2]) < 0.1)
+    //if (1)
+    {
+        double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
+        if (pose_norm2 < 50 && pose_norm2 > 0.0025)
+        {
+            /*std::cout << "有效的位姿估计！" << std::endl;
+            delta_translation = rotation_ * translation;
+            std::cout << delta_translation << std::endl;
+            Px_ = Px_ + delta_translation.at<double>(0);
+            Py_ = Py_ + delta_translation.at<double>(1);
+            Pz_ = Pz_ + delta_translation.at<double>(2);
+            rotation_ = rotation_ * rotation;
+            last_frame_ = current_frame_;*/
+            cv::Mat addup = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
+
+            cv::Mat rigid_body_transformation;
+            cv::hconcat(rotation, translation, rigid_body_transformation);
+            cv::vconcat(rigid_body_transformation, addup, rigid_body_transformation);
+            rigid_body_transformation = rigid_body_transformation.inv();
+            frame_pose_ = frame_pose_ * rigid_body_transformation;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+
+        return false;
+    }
+    cv::Mat xyz = frame_pose_.col(3).clone();
+    Px_ = xyz.at<double>(0);
+    Pz_ = xyz.at<double>(2);
+    Py_ = xyz.at<double>(1);
+
+    std::cout << "global translation:" << std::endl
+              << Px_ << ", " << Py_ << ", " << Pz_ << std::endl;
+    display(trajectory_, Px_, Pz_);
+    return true;
+} // namespace myslam
 bool Frontend::slambook_EstimatePose_PnP(cv::Mat &projMatrl,
                                          std::vector<cv::Point2f> &pointsLeft_t2,
                                          cv::Mat &points3D_t0,

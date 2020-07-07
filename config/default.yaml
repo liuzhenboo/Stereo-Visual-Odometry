@@ -3,7 +3,6 @@
 
 # data
 dataset_dir_kitti: /media/lzb/Windows-SSD/ubuntu16/00
-dataset_dir_tum: /media/lzb/18829571198/common_datasets/euroc/MH_01_easy
 
 # ros stereo topics
 left_image_topic: /zed/zed_node/left/image_rect_color
@@ -45,7 +44,7 @@ camera_r.cx: 607.193
 camera_r.cy: 185.216
 
 # Extrinsics (t)
-Extrinsics_x: 0.25765
+Extrinsics_x: 0.537
 Extrinsics_y: 0.00
 Extrinsics_z: 0.00
 
@@ -78,5 +77,5 @@ confidence: 0.99
 
 orb_dir: /home/lzb/Projects/robust-vslam/config/orb.yaml
 display_scale: 1
-display_x: 1000
-display_y: 1000
+display_x: 300
+display_y: 100

@@ -38,6 +38,8 @@ public:
   Frame::Ptr current_frame1_ = nullptr; // 当前帧
   Vec3 t_;
   Frontend();
+  cv::Mat frame_pose_ = cv::Mat::eye(4, 4, CV_64F);
+
   int display_scale_ = 1;
   int display_x_ = 1000;
   int display_y_ = 1000;
@@ -142,6 +144,7 @@ private:
      * estimate current frame's pose
      * @return num of inliers
      */
+  bool LK_StereoF2F_PnP_Track();
   bool StereoF2F_PnP_Track();
 
   /**
