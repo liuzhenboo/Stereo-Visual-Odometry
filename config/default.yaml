@@ -2,7 +2,7 @@
 
 
 # data
-dataset_dir_kitti: /media/lzb/18829571198/common_datasets/kitti
+dataset_dir_kitti: /media/lzb/Windows-SSD/ubuntu16/00
 dataset_dir_tum: /media/lzb/18829571198/common_datasets/euroc/MH_01_easy
 
 # ros stereo topics
@@ -12,23 +12,43 @@ right_image_topic: /zed/zed_node/right/image_rect_color
 # don't care，it doesn't effect others.(this param is diacard)
 ros_data_IaE_dir: /
 
+# ZED-----------------------------------------------
 # camera_L intrinsics
-camera_l.fx: 699.715
-camera_l.fy: 699.715
-camera_l.cx: 648.854
-camera_l.cy: 350.34
+#camera_l.fx: 699.715
+#camera_l.fy: 699.715
+#camera_l.cx: 648.854
+#camera_l.cy: 350.34
 
 # camera_R intrinsics
-camera_r.fx: 699.39
-camera_r.fy: 699.39
-camera_r.cx: 645.379
-camera_r.cy: 365.323
+#camera_r.fx: 699.39
+#camera_r.fy: 699.39
+#camera_r.cx: 645.379
+#camera_r.cy: 365.323
 
 # Extrinsics (t)
-Extrinsics_x: 0.12
+#Extrinsics_x: 0.12
+#Extrinsics_y: 0.00
+#Extrinsics_z: 0.00
+
+
+# Kitti --------------------------------
+#camera_L intrinsics
+camera_l.fx: 718.856
+camera_l.fy: 718.856
+camera_l.cx: 607.193
+camera_l.cy: 185.216
+
+# camera_R intrinsics
+camera_r.fx: 718.856
+camera_r.fy: 718.856
+camera_r.cx: 607.193
+camera_r.cy: 185.216
+
+# Extrinsics (t)
+Extrinsics_x: 0.25765
 Extrinsics_y: 0.00
 Extrinsics_z: 0.00
- 
+
 
 # feature detector
 num_features: 150
@@ -36,10 +56,10 @@ num_features: 150
 # init
 num_features_init: 20
 init_landmarks: 5
-feature_match_error: 5000
+feature_match_error: 2
 
 # tracking
-num_features_tracking: 10
+num_features_tracking: 5
 num_features_tracking_bad: 10
 num_features_needed_for_keyframe: 60
 
@@ -49,9 +69,14 @@ num_active_keyframes: 7
 #mode stereo_f2f, f2localmap
 track_mode: stereof2f_pnp
 
-inlier_rate: -1
+inlier_rate: 0.01
 
 # estimate pose cv::pnp_ransac
-iterationsCount: 200
-reprojectionError: 1.5
-confidence: 0.8
+iterationsCount: 500
+reprojectionError: 0.5
+confidence: 0.99
+
+orb_dir: /home/lzb/Projects/robust-vslam/config/orb.yaml
+display_scale: 1
+display_x: 1000
+display_y: 1000

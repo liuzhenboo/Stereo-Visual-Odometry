@@ -6,26 +6,32 @@
 #include <opencv2/opencv.hpp>
 using namespace std;
 
-namespace myslam {
+namespace myslam
+{
 
-Dataset::Dataset(const std::string& dataset_path)
+Dataset::Dataset(const std::string &dataset_path)
     : dataset_path_(dataset_path) {}
 
-bool Dataset::Init() {
+bool Dataset::Init()
+{
     // read camera intrinsics and extrinsics
     ifstream fin(dataset_path_ + "/calib.txt");
-    if (!fin) {
+    if (!fin)
+    {
         LOG(ERROR) << "cannot find " << dataset_path_ << "/calib.txt!";
         return false;
     }
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i)
+    {
         char camera_name[3];
-        for (int k = 0; k < 3; ++k) {
+        for (int k = 0; k < 3; ++k)
+        {
             fin >> camera_name[k];
         }
         double projection_data[12];
-        for (int k = 0; k < 12; ++k) {
+        for (int k = 0; k < 12; ++k)
+        {
             fin >> projection_data[k];
         }
         Mat33 K;
@@ -46,41 +52,47 @@ bool Dataset::Init() {
     return true;
 }
 
-bool Dataset::Stereo_Init() {
+bool Dataset::Stereo_Init()
+{
     Vec3 t_l;
-    t_l << 0, 0, 0; 
+    t_l << 0, 0, 0;
     Camera::Ptr new_camera_L(new Camera(Config::Get<double>("camera_l.fx"), Config::Get<double>("camera_l.fy"), Config::Get<double>("camera_l.cx"), Config::Get<double>("camera_l.cy"),
-                                          t_l.norm(), SE3(SO3(), t_l)));
+                                        t_l.norm(), SE3(SO3(), t_l)));
     cameras_.push_back(new_camera_L);
-    LOG(INFO) << "Left Camera rotationMatrix:" << std::endl << SE3(SO3(), t_l).rotationMatrix();
-    LOG(INFO) << "Left Camera translation:" << std::endl << SE3(SO3(), t_l).translation();
-
+    LOG(INFO) << "Left Camera rotationMatrix:" << std::endl
+              << SE3(SO3(), t_l).rotationMatrix();
+    LOG(INFO) << "Left Camera translation:" << std::endl
+              << SE3(SO3(), t_l).translation();
 
     Vec3 t_r;
     t_r << Config::Get<double>("Extrinsics_x"), Config::Get<double>("Extrinsics_y"), Config::Get<double>("Extrinsics_z");
     Camera::Ptr new_camera_R(new Camera(Config::Get<double>("camera_r.fx"), Config::Get<double>("camera_r.fy"), Config::Get<double>("camera_r.cx"), Config::Get<double>("camera_l.cy"),
-                                          t_r.norm(), SE3(SO3(), t_r)));
+                                        t_r.norm(), SE3(SO3(), t_r)));
     cameras_.push_back(new_camera_R);
-    
-    LOG(INFO) << "Right Camera rotationMatrix:" << std::endl << SE3(SO3(), t_r).rotationMatrix();
-    LOG(INFO) << "Right Camera translation:" << std::endl << SE3(SO3(), t_r).translation();
+
+    LOG(INFO) << "Right Camera rotationMatrix:" << std::endl
+              << SE3(SO3(), t_r).rotationMatrix();
+    LOG(INFO) << "Right Camera translation:" << std::endl
+              << SE3(SO3(), t_r).translation();
     current_image_index_ = 0;
     return true;
 }
 
-Frame::Ptr Dataset::NextFrame() {
+Frame::Ptr Dataset::NextFrame()
+{
     boost::format fmt("%s/image_%d/%06d.png");
     cv::Mat image_left, image_right;
     // read images
-    image_left =   
+    image_left =
         cv::imread((fmt % dataset_path_ % 0 % current_image_index_).str(),
                    cv::IMREAD_GRAYSCALE);
-    image_right = 
+    image_right =
         cv::imread((fmt % dataset_path_ % 1 % current_image_index_).str(),
                    cv::IMREAD_GRAYSCALE);
     cout << (fmt % dataset_path_ % 0 % current_image_index_).str() << endl;
 
-    if (image_left.data == nullptr || image_right.data == nullptr) {
+    if (image_left.data == nullptr || image_right.data == nullptr)
+    {
         LOG(WARNING) << "cannot find images at index " << current_image_index_;
         return nullptr;
     }
@@ -98,4 +110,4 @@ Frame::Ptr Dataset::NextFrame() {
     return new_frame;
 }
 
-}  // namespace myslam
+} // namespace myslam

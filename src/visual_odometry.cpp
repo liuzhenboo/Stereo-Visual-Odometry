@@ -3,14 +3,17 @@
 #include "myslam/frontend.h"
 #include "myslam/visual_odometry.h"
 
-namespace myslam {
+namespace myslam
+{
 
 VisualOdometry::VisualOdometry(std::string &config_path)
     : config_file_path_(config_path) {}
 
-bool VisualOdometry::Init() {
+bool VisualOdometry::Init()
+{
     // read from config file
-    if (Config::SetParameterFile(config_file_path_) == false) {
+    if (Config::SetParameterFile(config_file_path_) == false)
+    {
         return false;
     }
 
@@ -21,7 +24,7 @@ bool VisualOdometry::Init() {
 
     // create components（组件） and links（相互访问的指针）
     frontend_ = Frontend::Ptr(new Frontend);
-    backend_ = Backend::Ptr(new Backend);      
+    backend_ = Backend::Ptr(new Backend);
     map_ = Map::Ptr(new Map);
     viewer_ = Viewer::Ptr(new Viewer);
 
@@ -37,27 +40,28 @@ bool VisualOdometry::Init() {
 
     return true;
 }
-bool VisualOdometry::Init_StereoRos() {
+bool VisualOdometry::Init_StereoRos()
+{
 
     // read from config file
-    if (Config::SetParameterFile(config_file_path_) == false) {
-        std::cout << "不能打开配置文件！" <<std::endl;
+    if (Config::SetParameterFile(config_file_path_) == false)
+    {
+        std::cout << "不能打开配置文件！" << std::endl;
         return false;
     }
     else
     {
-        std::cout << "可以打开配置文件，准备初始化类！" <<std::endl;
+        std::cout << "可以打开配置文件，准备初始化类！" << std::endl;
     }
-    
 
     dataset_ =
-        Dataset::Ptr(new Dataset(Config::Get<std::string>("ros_data_IaE_dir")));
-    
+        Dataset::Ptr(new Dataset(Config::Get<std::string>("dataset_dir_kitti")));
+
     CHECK_EQ(dataset_->Stereo_Init(), true);
 
     // create components（组件） and links（相互访问的指针）
     frontend_ = Frontend::Ptr(new Frontend);
-    backend_ = Backend::Ptr(new Backend);      
+    backend_ = Backend::Ptr(new Backend);
     map_ = Map::Ptr(new Map);
     viewer_ = Viewer::Ptr(new Viewer);
 
@@ -74,21 +78,26 @@ bool VisualOdometry::Init_StereoRos() {
 
     return true;
 }
-void VisualOdometry::Run() {
-    while (1) {
+void VisualOdometry::Run()
+{
+    while (1)
+    {
         LOG(INFO) << "VO is running";
         // 主循环
-        if (Step() == false) {
+        if (Step() == false)
+        {
             break;
-        }   
+        }
     }
     Shutdown();
 }
 
 // 主程序
-bool VisualOdometry::Step() {
+bool VisualOdometry::Step()
+{
     Frame::Ptr new_frame = dataset_->NextFrame();
-    if (new_frame == nullptr) return false;
+    if (new_frame == nullptr)
+        return false;
 
     auto t1 = std::chrono::steady_clock::now();
     bool success = frontend_->AddFrame(new_frame);
@@ -98,9 +107,11 @@ bool VisualOdometry::Step() {
     LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
     return success;
 }
-bool VisualOdometry::Step_ros(Frame::Ptr new_frame) {
-    
-    if (new_frame == nullptr) return false;    
+bool VisualOdometry::Step_ros(Frame::Ptr new_frame)
+{
+
+    if (new_frame == nullptr)
+        return false;
     auto t1 = std::chrono::steady_clock::now();
     //std::cout << "t1" << std::endl;
     //current_frame2_ = new_frame;
@@ -112,13 +123,14 @@ bool VisualOdometry::Step_ros(Frame::Ptr new_frame) {
     //frontend_->current_frame1_ = new_frame;
     //std::cout << "t2" << std::endl;
 
-    auto t2 = std::chrono::steady_clock::now();    
+    auto t2 = std::chrono::steady_clock::now();
     auto time_used =
         std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
     //LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
     return success;
 }
-void VisualOdometry::Shutdown(){
+void VisualOdometry::Shutdown()
+{
     backend_->Stop();
     viewer_->Close();
     LOG(INFO) << "VO exit";
@@ -126,11 +138,12 @@ void VisualOdometry::Shutdown(){
 
 // 跟踪失败之后重置系统。
 // 先重置地图，后端优化，显示，再给跟踪线程初始化标志位。
-void VisualOdometry::Reset(){
+void VisualOdometry::Reset()
+{
     map_->Reset_Map();
     backend_->Reset();
     viewer_->Reset();
     frontend_->SetStatus(FrontendStatus::INITING);
 }
 
-}  // namespace myslam
+} // namespace myslam

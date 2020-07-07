@@ -9,7 +9,8 @@ add_library(myslam SHARED
         backend.cpp
         viewer.cpp
         visual_odometry.cpp
-        dataset.cpp)
+        dataset.cpp
+        ORBextractor.cpp)
 
 target_link_libraries(myslam
         ${THIRD_PARTY_LIBS})
