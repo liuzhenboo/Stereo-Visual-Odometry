@@ -33,6 +33,8 @@ Frontend::Frontend()
     display_scale_ = Config::Get<int>("display_scale");
     display_x_ = Config::Get<int>("display_x");
     display_y_ = Config::Get<int>("display_y");
+    maxmove_ = Config::Get<double>("maxmove");
+    minmove_ = Config::Get<double>("minmove");
     t_[0] = 0;
     t_[1] = 0;
     t_[2] = 0;
@@ -311,14 +313,15 @@ int Frontend::FindFeaturesInRight()
 
 bool Frontend::Track()
 {
-    if (track_mode_ == "stereof2f_pnp")
+    if (track_mode_ == "LK_stereof2f_pnp")
     {
-        std::cout << "跟踪模式为：stereof2f_pnp" << std::endl;
-        return StereoF2F_PnP_Track();
+        std::cout << "跟踪模式为：LK_stereof2f_pnp" << std::endl;
+        return LK_StereoF2F_PnP_Track();
     }
-    else
+    else if (track_mode_ == "ORB_stereof2f_pnp")
     {
-        return F2LocalMap_Track();
+        std::cout << "跟踪模式为：ORB_stereof2f_pnp" << std::endl;
+        return ORB_StereoF2F_PnP_Track();
     }
 }
 bool Frontend::triangulation_opencv(
@@ -364,7 +367,7 @@ bool Frontend::triangulation_opencv(
     }
     return true;
 }
-bool Frontend::StereoF2F_PnP_Track()
+bool Frontend::ORB_StereoF2F_PnP_Track()
 {
     int num_features_left = DetectFeatures();
 
@@ -377,35 +380,16 @@ bool Frontend::StereoF2F_PnP_Track()
     int num_f2f_trackedfeatures = ORB_Robust_Find_MuliImage_MatchedFeatures(matched_t2_left, matched_t1_left, matched_t1_right);
     if (num_f2f_trackedfeatures < num_features_tracking_)
     {
-        last_frame_ = current_frame_;
-        return true;
+        std::cout << "前后帧跟踪orb点少，忽略此次估计值！" << std::endl;
+        return false;
     }
-    //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" << std::endl;
-    /*for (int i = 0; i < matched_t1_left.size(); i++)
-    {
-        std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << ",--- " << matched_t1_right[i].x << ", " << matched_t1_right[i].y << std::endl;
-    }*/
-    //std::cout << "当前帧提取到" << num_features_left << "个特征点，"
-    //          << "其中用光流跟踪到上一帧" << num_f2f_trackedfeatures << "个特征点" << std::endl;
-    //if (num_f2f_trackedfeatures < num_features_tracking_)
-    //{
-    //    std::cout << "前后帧跟踪的点过少,跟踪失败！" << std::endl;
-    //    return false;
-    //}
-    // ---------------------
-    //三角化上一帧跟踪到的特征点
-    // ---------------------
     cv::Mat points3D_t0, points4D_t0;
     cv::Mat projMatrl = camera_left_->projMatr_;
     cv::Mat projMatrr = camera_right_->projMatr_;
-    //std::cout << projMatrl << "==" << projMatrr << std::endl;
 
-    //std::cout << "triangulatePoints" << std::endl;
     cv::triangulatePoints(projMatrl, projMatrr, matched_t1_left, matched_t1_right, points4D_t0);
-    //std::cout << "triangulatePoints" << std::endl;
 
     cv::convertPointsFromHomogeneous(points4D_t0.t(), points3D_t0);
-    //std::cout << "3D点坐标：" << std::endl << points3D_t0 << std::endl;
 
     //---------------------------
     //PnP估计姿态；3D->2D
@@ -413,53 +397,24 @@ bool Frontend::StereoF2F_PnP_Track()
     cv::Mat rotation = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat translation = cv::Mat::zeros(3, 1, CV_64F);
     cv::Mat delta_translation = cv::Mat::zeros(3, 1, CV_64F);
-    //for(int i = 0; i < matched_t1_left.size(); i++){
-    //    std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << "---" << matched_t2_left[i].x << ", " << matched_t2_left[i].y << std::endl;
-    //}
-    //bool sum_estimate_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, //translation);
-    //std::cout << "slambook_EstimatePose_PnP " << std::endl;
     bool valid_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
     if (!valid_pose)
-        return true;
-
-    //std::cout << "slambook_EstimatePose_PnP " << std::endl;
-
-    //bool sum_estimate_pose = opencv_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
-    //if (!sum_estimate_pose)
-    //    return false;
+        return false;
     std::cout << "f2f rotation:" << std::endl
               << rotation << std::endl;
     std::cout << "f2f translation:" << std::endl
               << translation << std::endl;
 
+    //显示轨迹
+    displayTracking(current_frame_->left_img_, matched_t1_left, matched_t2_left);
+
     // 5cm,100cm，保证帧之间的运动合适
     cv::Vec3f rotation_euler = rotationMatrixToEulerAngles(rotation);
-    /*double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));*/
-
-    /*if (pose_norm2 < 1 && pose_norm2 > 0.0001)
-    {
-        std::cout << "有效的位姿估计！" << std::endl;
-        std::cout << translation << std::endl;
-        Px_ = Px_ + translation.at<double>(0);
-        Py_ = Py_ + translation.at<double>(1);
-        Pz_ = Pz_ + translation.at<double>(2);
-        last_frame_ = current_frame_;
-    }*/
-
     if (abs(rotation_euler[1]) < 0.1 && abs(rotation_euler[0]) < 0.1 && abs(rotation_euler[2]) < 0.1)
-    //if (1)
     {
         double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
-        if (pose_norm2 < 10 && pose_norm2 > 0.00001)
+        if (pose_norm2 < maxmove_ * maxmove_ && pose_norm2 > minmove_ * minmove_)
         {
-            /*std::cout << "有效的位姿估计！" << std::endl;
-            delta_translation = rotation_ * translation;
-            std::cout << delta_translation << std::endl;
-            Px_ = Px_ + delta_translation.at<double>(0);
-            Py_ = Py_ + delta_translation.at<double>(1);
-            Pz_ = Pz_ + delta_translation.at<double>(2);
-            rotation_ = rotation_ * rotation;
-            last_frame_ = current_frame_;*/
             cv::Mat addup = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
             cv::Mat rigid_body_transformation;
@@ -837,6 +792,7 @@ int Frontend::ORB_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f>
     // 当前帧图像中提取的特征点集合
     std::vector<cv::KeyPoint> mvKeys1, mvKeys2, mvKeys3;
     // 特征点对应的描述子
+
     cv::Mat mDescriptors1, mDescriptors2, mDescriptors3;
     (*mpORBextractorLeft)(last_frame_->left_img_, cv::Mat(), mvKeys1, mDescriptors1);
     (*mpORBextractorLeft)(last_frame_->right_img_, cv::Mat(), mvKeys2, mDescriptors2);

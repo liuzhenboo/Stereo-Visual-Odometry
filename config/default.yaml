@@ -65,8 +65,8 @@ num_features_needed_for_keyframe: 60
 # sliding window size
 num_active_keyframes: 7
 
-#mode stereo_f2f, f2localmap
-track_mode: stereof2f_pnp
+#mode LK_stereof2f_pnp, ORB_stereof2f_pnp
+track_mode: ORB_stereof2f_pnp
 
 inlier_rate: 0.01
 
@@ -76,6 +76,8 @@ reprojectionError: 0.5
 confidence: 0.99
 
 orb_dir: /home/lzb/Projects/robust-vslam/config/orb.yaml
-display_scale: 100
+display_scale: 10
 display_x: 300
 display_y: 100
+minmove: 0.05
+maxmove: 10

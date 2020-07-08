@@ -43,6 +43,8 @@ public:
    int display_scale_ = 1;
    int display_x_ = 1000;
    int display_y_ = 1000;
+   double minmove_ = 0.01;
+   double maxmove_ = 0.01;
    std::string orb_dir_;
    myslam::ORBextractor *mpORBextractorLeft;
    cv::Mat trajectory_ = cv::Mat::zeros(600, 1200, CV_8UC3);
@@ -158,7 +160,7 @@ private:
      * @return num of inliers
      */
    bool LK_StereoF2F_PnP_Track();
-   bool StereoF2F_PnP_Track();
+   bool ORB_StereoF2F_PnP_Track();
 
    /**
      * set current frame as a keyframe and insert it into backend

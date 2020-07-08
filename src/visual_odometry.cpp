@@ -22,7 +22,6 @@ bool VisualOdometry::Init()
     // CHECK_EQ 用来判断两个值是否相等；Init()读内外参到dataset_中
     CHECK_EQ(dataset_->Init(), true);
 
-    // create components（组件） and links（相互访问的指针）
     frontend_ = Frontend::Ptr(new Frontend);
     backend_ = Backend::Ptr(new Backend);
     map_ = Map::Ptr(new Map);
@@ -113,15 +112,8 @@ bool VisualOdometry::Step_ros(Frame::Ptr new_frame)
     if (new_frame == nullptr)
         return false;
     auto t1 = std::chrono::steady_clock::now();
-    //std::cout << "t1" << std::endl;
-    //current_frame2_ = new_frame;
-    //std::cout << "t1" << std::endl;
 
     bool success = frontend_->AddFrame(new_frame);
-    //Frame::Ptr y = nullptr;
-    //y = new_frame;
-    //frontend_->current_frame1_ = new_frame;
-    //std::cout << "t2" << std::endl;
 
     auto t2 = std::chrono::steady_clock::now();
     auto time_used =
