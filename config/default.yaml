@@ -50,12 +50,12 @@ Extrinsics_z: 0.00
 
 
 # feature detector
-num_features: 150
+num_features: 500
 
 # init
 num_features_init: 20
 init_landmarks: 5
-feature_match_error: 2
+feature_match_error: 40
 
 # tracking
 num_features_tracking: 5
@@ -76,6 +76,6 @@ reprojectionError: 0.5
 confidence: 0.99
 
 orb_dir: /home/lzb/Projects/robust-vslam/config/orb.yaml
-display_scale: 1
+display_scale: 100
 display_x: 300
 display_y: 100

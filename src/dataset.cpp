@@ -66,7 +66,7 @@ bool Dataset::Stereo_Init()
 
     Vec3 t_r;
     t_r << Config::Get<double>("Extrinsics_x"), Config::Get<double>("Extrinsics_y"), Config::Get<double>("Extrinsics_z");
-    Camera::Ptr new_camera_R(new Camera(Config::Get<double>("camera_r.fx"), Config::Get<double>("camera_r.fy"), Config::Get<double>("camera_r.cx"), Config::Get<double>("camera_l.cy"),
+    Camera::Ptr new_camera_R(new Camera(Config::Get<double>("camera_r.fx"), Config::Get<double>("camera_r.fy"), Config::Get<double>("camera_r.cx"), Config::Get<double>("camera_r.cy"),
                                         t_r.norm(), SE3(SO3(), t_r)));
     cameras_.push_back(new_camera_R);
 
@@ -104,8 +104,8 @@ Frame::Ptr Dataset::NextFrame()
                cv::INTER_NEAREST);
 
     auto new_frame = Frame::CreateFrame();
-    new_frame->left_img_ = image_left_resized;
-    new_frame->right_img_ = image_right_resized;
+    new_frame->left_img_ = image_left;
+    new_frame->right_img_ = image_right;
     current_image_index_++;
     return new_frame;
 }

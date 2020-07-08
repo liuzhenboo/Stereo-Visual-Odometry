@@ -208,7 +208,7 @@ bool Frontend::BuildInitMap()
 
 int Frontend::DetectFeatures()
 {
-    cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
+    /*cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
     for (auto &feat : current_frame_->features_left_)
     {
         cv::rectangle(mask, feat->position_.pt - cv::Point2f(10, 10),
@@ -226,7 +226,25 @@ int Frontend::DetectFeatures()
         cnt_detected++;
     }
 
-    //LOG(INFO) << "Detect " << cnt_detected << " new features";
+    LOG(INFO) << "Detect " << cnt_detected << " new features";
+    return cnt_detected;*/
+    //------------------------------------------------------------------fast feature
+    int cnt_detected = 0;
+
+    std::vector<cv::KeyPoint> keypoints;
+    int fast_threshold = 20;
+    bool nonmaxSuppression = true;
+    cv::FAST(current_frame_->left_img_, keypoints, fast_threshold, nonmaxSuppression);
+    std::vector<cv::Point2f> points;
+    //cv::KeyPoint::convert(keypoints, points, std::vector<int>());
+    for (auto &kp : keypoints)
+    {
+        current_frame_->features_left_.push_back(
+            Feature::Ptr(new Feature(current_frame_, kp)));
+        cnt_detected++;
+    }
+
+    LOG(INFO) << "Detect " << cnt_detected << " new features";
     return cnt_detected;
 }
 
@@ -296,7 +314,7 @@ bool Frontend::Track()
     if (track_mode_ == "stereof2f_pnp")
     {
         std::cout << "跟踪模式为：stereof2f_pnp" << std::endl;
-        return LK_StereoF2F_PnP_Track();
+        return StereoF2F_PnP_Track();
     }
     else
     {
@@ -474,28 +492,41 @@ bool Frontend::StereoF2F_PnP_Track()
 bool Frontend::LK_StereoF2F_PnP_Track()
 {
     int num_features_left = DetectFeatures();
-    if (num_features_left < 40)
+    if (num_features_left < 30)
         return false;
 
     // 光流跟踪前后帧
-    std::vector<cv::Point2f> matched_t1_left; // 光流跟踪到的像素点
-    std::vector<cv::Point2f> matched_t2_left;
-    std::vector<cv::Point2f> matched_t2_right;
-    std::vector<cv::Point2f> matched_t1_right;
-    for (auto &feature : current_frame_->features_left_)
+    /*std::vector<cv::Point2f> matched_t1_left((current_frame_->features_left_).size()); // 光流跟踪到的像素点
+    std::vector<cv::Point2f> matched_t2_left((current_frame_->features_left_).size());
+    std::vector<cv::Point2f> matched_t2_right((current_frame_->features_left_).size());
+    std::vector<cv::Point2f> matched_t1_right((current_frame_->features_left_).size());*/
+
+    /*for (auto &feature : current_frame_->features_left_)
     {
+        matched_t2_right.reserve((current_frame_->features_left_).size());
         matched_t2_left.push_back(feature->position_.pt);
         matched_t1_left.push_back(feature->position_.pt);
         matched_t1_right.push_back(feature->position_.pt);
+    }*/
+    std::vector<cv::Point2f> matched_t2_left, matched_t1_left, matched_t2_right, matched_t1_right;
+    for (auto &feature : last_frame_->features_left_)
+    {
+        matched_t1_left.push_back(feature->position_.pt);
     }
 
     //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" << std::endl;
-    int num_f2f_trackedfeatures = LK_Robust_Find_MuliImage_MatchedFeatures(matched_t2_left, matched_t1_left, matched_t1_right);
+    int num_f2f_trackedfeatures = LK_Robust_Find_MuliImage_MatchedFeatures(matched_t2_left, matched_t2_right, matched_t1_left, matched_t1_right);
     if (num_f2f_trackedfeatures < num_features_tracking_)
     {
-        last_frame_ = current_frame_;
+        std::cout << "跟踪点较少：" << num_f2f_trackedfeatures << std::endl;
+        //last_frame_ = current_frame_;
         return false;
     }
+    else
+    {
+        std::cout << "跟踪了" << num_f2f_trackedfeatures << "个点" << std::endl;
+    }
+
     //std::cout << "LK_Robust_Find_MuliImage_MatchedFeatures" << std::endl;
     /*for (int i = 0; i < matched_t1_left.size(); i++)
     {
@@ -514,6 +545,9 @@ bool Frontend::LK_StereoF2F_PnP_Track()
     cv::Mat points3D_t0, points4D_t0;
     cv::Mat projMatrl = camera_left_->projMatr_;
     cv::Mat projMatrr = camera_right_->projMatr_;
+    //cv::Mat projMatrl = (cv::Mat_<float>(3, 4) << 718.8560, 0., 607.1928, 0., 0., 718.8560, 185.2157, 0., 0, 0., 1., 0.);
+    //cv::Mat projMatrr = (cv::Mat_<float>(3, 4) << 718.8560, 0., 607.1928, -386.1448, 0., 718.8560, 185.2157, 0., 0, 0., 1., 0.);
+
     //std::cout << projMatrl << "==" << projMatrr << std::endl;
 
     //std::cout << "triangulatePoints" << std::endl;
@@ -534,10 +568,12 @@ bool Frontend::LK_StereoF2F_PnP_Track()
     //}
     //bool sum_estimate_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, //translation);
     //std::cout << "slambook_EstimatePose_PnP " << std::endl;
-    bool enough_inlier = opencv_EstimatePose_PnP(projMatrl, matched_t1_right, points3D_t0, rotation, translation);
+    bool enough_inlier = opencv_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
     if (!enough_inlier)
+    {
         return false;
-
+    }
+    //
     //std::cout << "slambook_EstimatePose_PnP " << std::endl;
 
     //bool sum_estimate_pose = opencv_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
@@ -547,6 +583,7 @@ bool Frontend::LK_StereoF2F_PnP_Track()
               << rotation << std::endl;
     std::cout << "f2f translation:" << std::endl
               << translation << std::endl;
+    displayTracking(current_frame_->left_img_, matched_t1_left, matched_t2_left);
 
     // 5cm,100cm，保证帧之间的运动合适
     cv::Vec3f rotation_euler = rotationMatrixToEulerAngles(rotation);
@@ -566,7 +603,7 @@ bool Frontend::LK_StereoF2F_PnP_Track()
     //if (1)
     {
         double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
-        if (pose_norm2 < 50 && pose_norm2 > 0.0025)
+        if (pose_norm2 < 100 && pose_norm2 > 0.0005 * 0.0005)
         {
             /*std::cout << "有效的位姿估计！" << std::endl;
             delta_translation = rotation_ * translation;
@@ -604,6 +641,37 @@ bool Frontend::LK_StereoF2F_PnP_Track()
     display(trajectory_, Px_, Pz_);
     return true;
 } // namespace myslam
+
+void Frontend::displayTracking(cv::Mat &imageLeft_t1,
+                               std::vector<cv::Point2f> &pointsLeft_t0,
+                               std::vector<cv::Point2f> &pointsLeft_t1)
+{
+    // -----------------------------------------
+    // Display feature racking
+    // -----------------------------------------
+    int radius = 2;
+    cv::Mat vis;
+
+    cv::cvtColor(imageLeft_t1, vis, cv::COLOR_GRAY2BGR, 3);
+
+    for (int i = 0; i < pointsLeft_t0.size(); i++)
+    {
+        cv::circle(vis, cv::Point(pointsLeft_t0[i].x, pointsLeft_t0[i].y), radius, CV_RGB(0, 255, 0));
+    }
+
+    for (int i = 0; i < pointsLeft_t1.size(); i++)
+    {
+        cv::circle(vis, cv::Point(pointsLeft_t1[i].x, pointsLeft_t1[i].y), radius, CV_RGB(255, 0, 0));
+    }
+
+    for (int i = 0; i < pointsLeft_t1.size(); i++)
+    {
+        cv::line(vis, pointsLeft_t0[i], pointsLeft_t1[i], CV_RGB(0, 255, 0));
+    }
+
+    cv::imshow("robust-vslam ", vis);
+}
+
 bool Frontend::slambook_EstimatePose_PnP(cv::Mat &projMatrl,
                                          std::vector<cv::Point2f> &pointsLeft_t2,
                                          cv::Mat &points3D_t0,
@@ -705,9 +773,8 @@ bool Frontend::opencv_EstimatePose_PnP(cv::Mat &projMatrl,
     // ------------------------------------------------
     cv::Mat distCoeffs = cv::Mat::zeros(4, 1, CV_64FC1);
     cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64FC1);
-    cv::Mat intrinsic_matrix = (cv::Mat_<float>(3, 3) << projMatrl.at<float>(0, 0), projMatrl.at<float>(0, 1), projMatrl.at<float>(0, 2),
-                                projMatrl.at<float>(1, 0), projMatrl.at<float>(1, 1), projMatrl.at<float>(1, 2),
-                                projMatrl.at<float>(1, 1), projMatrl.at<float>(1, 2), projMatrl.at<float>(1, 3));
+    cv::Mat intrinsic_matrix = (cv::Mat_<float>(3, 3) << projMatrl.at<float>(0, 0), projMatrl.at<float>(0, 1), projMatrl.at<float>(0, 2), projMatrl.at<float>(1, 0), projMatrl.at<float>(1, 1), projMatrl.at<float>(1, 2),
+                                projMatrl.at<float>(2, 0), projMatrl.at<float>(2, 1), projMatrl.at<float>(2, 2));
 
     int iterationsCount = iterationsCount_;       // number of Ransac iterations.
     float reprojectionError = reprojectionError_; // maximum allowed distance to consider it an inlier.
@@ -833,73 +900,125 @@ int Frontend::ORB_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f>
 }
 
 int Frontend::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> &points_t2_left,
+                                                       std::vector<cv::Point2f> &points_t2_right,
                                                        std::vector<cv::Point2f> &points_t1_left,
                                                        std::vector<cv::Point2f> &points_t1_right)
 {
-    std::vector<cv::Point2f> points_final = points_t1_left;
+    std::vector<cv::Point2f> points_final;
 
     // 4次LK光流跟踪
-    std::vector<uchar> status1, status2, status3;
-    cv::Mat error1, error2, error3;
-    // 上一时刻左图与当前左图(t2_l --> t2_r)
+    std::vector<uchar> status1, status2, status3, status4;
+    cv::Mat error1, error2, error3, error4;
     //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
     cv::calcOpticalFlowPyrLK(
-        last_frame_->left_img_, current_frame_->left_img_, points_t1_left,
-        points_t2_left, status1, error1, cv::Size(11, 11), 3,
+        last_frame_->left_img_, last_frame_->right_img_, points_t1_left,
+        points_t1_right, status1, error1, cv::Size(21, 21), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
+        0, 0.001);
     //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
 
     // 当前时刻左图与上一时刻右图
     cv::calcOpticalFlowPyrLK(
-        current_frame_->left_img_, last_frame_->right_img_, points_t2_left,
-        points_t1_right, status2, error2, cv::Size(11, 11), 3,
+        last_frame_->right_img_, current_frame_->right_img_, points_t1_right,
+        points_t2_right, status2, error2, cv::Size(21, 21), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
+        0, 0.001);
     //std::cout << "calcOpticalFlowPyrLK" <<  std::endl;
 
     // 上一时刻右图与上一时刻左图
     cv::calcOpticalFlowPyrLK(
-        last_frame_->right_img_, last_frame_->left_img_, points_t1_right,
-        points_final, status3, error3, cv::Size(11, 11), 3,
+        current_frame_->right_img_, current_frame_->left_img_, points_t2_right,
+        points_t2_left, status3, error3, cv::Size(21, 21), 3,
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
+        0, 0.001);
+    cv::calcOpticalFlowPyrLK(
+        current_frame_->left_img_, last_frame_->left_img_, points_t2_left,
+        points_final, status4, error4, cv::Size(21, 21), 3,
+        cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                         0.01),
+        0, 0.001);
+    deleteUnmatchFeaturesCircle(points_t1_left, points_t1_right, points_t2_right, points_t2_left, points_final,
+                                status1, status2, status3, status4);
+    return points_t1_left.size();
 
+    /*std::cout << "------------------" << status4.size() << std::endl;
     // select good point
     int good = 0;
-    bool y_error = false;
-    bool xy_error = false;
-    for (size_t i = 0; i < status1.size(); ++i)
+    //bool xy_error = true;
+    //bool loop_error = true;
+    for (size_t i = 0; i < status4.size(); ++i)
     {
-        if (status1[i] && status2[i] && status3[i])
-        {
-            // 左右目跟踪特征点y值必须差不多
-            if ((points_t1_left[i].y - points_t1_right[i].y) * (points_t1_left[i].y - points_t1_right[i].y) <= feature_match_error_)
-                y_error = true;
-            else
-                y_error = false;
-            if ((std::pow((points_final[i].x - points_t1_left[i].x), 2) + std::pow((points_final[i].y - points_t1_left[i].y), 2)) <= feature_match_error_)
-                xy_error = true;
-            else
-                xy_error = false;
+        bool xy_error = true;
+        bool loop_error = true;
 
-            if (y_error && xy_error)
+        if (status1[i] && status2[i] && status3[i] && status4[i])
+        {
+            if ((std::pow((points_final[i].x - points_t1_left[i].x), 2) + std::pow((points_final[i].y - points_t1_left[i].y), 2)) <= feature_match_error_)
+                loop_error = false;
+            else
+                loop_error = true;
+            if (points_t2_left[i].x <= 0 || points_t2_left[i].y <= 0 || points_t2_right[i].x <= 0 || points_t2_right[i].y <= 0 || points_t1_left[i].x <= 0 || points_t1_left[i].y <= 0 || points_t1_right[i].x <= 0 || points_t1_right[i].y <= 0)
+            {
+                xy_error = false;
+            }
+            else
+            {
+                xy_error = true;
+            }
+            if (!loop_error && !xy_error)
             {
                 points_t1_left[good] = points_t1_left[i];
                 points_t2_left[good] = points_t2_left[i];
                 points_t1_right[good] = points_t1_right[i];
+                points_t2_right[good] = points_t2_right[i];
                 good++;
             }
         }
-    }
+    } // namespace myslam
     points_t1_left.resize(good);
     points_t2_left.resize(good);
     points_t1_right.resize(good);
+    points_t2_right.resize(good);
 
-    return good;
+    return good;*/
+}
+void Frontend::deleteUnmatchFeaturesCircle(std::vector<cv::Point2f> &points0, std::vector<cv::Point2f> &points1,
+                                           std::vector<cv::Point2f> &points2, std::vector<cv::Point2f> &points3,
+                                           std::vector<cv::Point2f> &points0_return,
+                                           std::vector<uchar> &status0, std::vector<uchar> &status1,
+                                           std::vector<uchar> &status2, std::vector<uchar> &status3)
+{
+    //getting rid of points for which the KLT tracking failed or those who have gone outside the frame
+    int indexCorrection = 0;
+    for (int i = 0; i < status3.size(); i++)
+    {
+        cv::Point2f pt0 = points0.at(i - indexCorrection);
+        cv::Point2f pt1 = points1.at(i - indexCorrection);
+        cv::Point2f pt2 = points2.at(i - indexCorrection);
+        cv::Point2f pt3 = points3.at(i - indexCorrection);
+        cv::Point2f pt0_r = points0_return.at(i - indexCorrection);
+
+        if ((status3.at(i) == 0) || (pt3.x < 0) || (pt3.y < 0) ||
+            (status2.at(i) == 0) || (pt2.x < 0) || (pt2.y < 0) ||
+            (status1.at(i) == 0) || (pt1.x < 0) || (pt1.y < 0) ||
+            (status0.at(i) == 0) || (pt0.x < 0) || (pt0.y < 0))
+        {
+            if ((pt0.x < 0) || (pt0.y < 0) || (pt1.x < 0) || (pt1.y < 0) || (pt2.x < 0) || (pt2.y < 0) || (pt3.x < 0) || (pt3.y < 0))
+            {
+                status3.at(i) = 0;
+            }
+            points0.erase(points0.begin() + (i - indexCorrection));
+            points1.erase(points1.begin() + (i - indexCorrection));
+            points2.erase(points2.begin() + (i - indexCorrection));
+            points3.erase(points3.begin() + (i - indexCorrection));
+            points0_return.erase(points0_return.begin() + (i - indexCorrection));
+
+            indexCorrection++;
+        }
+    }
 }
 
 bool Frontend::F2LocalMap_Track()
