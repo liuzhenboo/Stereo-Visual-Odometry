@@ -1,6 +1,6 @@
-#include "lzbslam/camera.h"
+#include "robust_vslam/camera.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 Camera::Camera()
@@ -42,4 +42,4 @@ Vec3 Camera::pixel2world(const Vec2 &p_p, const SE3 &T_c_w, double depth)
     return camera2world(pixel2camera(p_p, depth), T_c_w);
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam

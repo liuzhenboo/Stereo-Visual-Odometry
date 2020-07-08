@@ -1,14 +1,14 @@
-#ifndef lzbslam_VIEWER_H
-#define lzbslam_VIEWER_H
+#ifndef robust_vslam_VIEWER_H
+#define robust_vslam_VIEWER_H
 
 #include <thread>
 #include <pangolin/pangolin.h>
 
-#include "lzbslam/common_include.h"
-#include "lzbslam/frame.h"
-#include "lzbslam/map.h"
+#include "robust_vslam/common_include.h"
+#include "robust_vslam/frame.h"
+#include "robust_vslam/map.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 /**
@@ -67,6 +67,6 @@ private:
 
     std::mutex viewer_data_mutex_;
 };
-} // namespace lzbslam
+} // namespace robust_vslam
 
-#endif // lzbslam_VIEWER_H
+#endif // robust_vslam_VIEWER_H

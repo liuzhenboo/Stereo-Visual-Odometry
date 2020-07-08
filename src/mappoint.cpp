@@ -17,10 +17,10 @@
  *
  */
 
-#include "lzbslam/mappoint.h"
-#include "lzbslam/feature.h"
+#include "robust_vslam/mappoint.h"
+#include "robust_vslam/feature.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 MapPoint::MapPoint(long id, Vec3 position) : id_(id), pos_(position) {}
@@ -49,4 +49,4 @@ void MapPoint::RemoveObservation(std::shared_ptr<Feature> feat)
     }
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam

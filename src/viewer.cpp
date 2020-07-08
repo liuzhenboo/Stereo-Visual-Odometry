@@ -1,11 +1,11 @@
-#include "lzbslam/viewer.h"
-#include "lzbslam/feature.h"
-#include "lzbslam/frame.h"
+#include "robust_vslam/viewer.h"
+#include "robust_vslam/feature.h"
+#include "robust_vslam/frame.h"
 
 #include <pangolin/pangolin.h>
 #include <opencv2/opencv.hpp>
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 Viewer::Viewer()
@@ -36,7 +36,7 @@ void Viewer::UpdateMap()
 
 void Viewer::ThreadLoop()
 {
-    pangolin::CreateWindowAndBind("lzbslam", 1024, 768);
+    pangolin::CreateWindowAndBind("robust_vslam", 1024, 768);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -198,4 +198,4 @@ void Viewer::DrawMapPoints()
     glEnd();
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam

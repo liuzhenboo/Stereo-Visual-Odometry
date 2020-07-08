@@ -1,12 +1,12 @@
-#include "lzbslam/dataset.h"
-#include "lzbslam/frame.h"
-#include "lzbslam/config.h"
+#include "robust_vslam/dataset.h"
+#include "robust_vslam/frame.h"
+#include "robust_vslam/config.h"
 #include <boost/format.hpp>
 #include <fstream>
 #include <opencv2/opencv.hpp>
 using namespace std;
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 Dataset::Dataset(const std::string &dataset_path)
@@ -110,4 +110,4 @@ Frame::Ptr Dataset::NextFrame()
     return new_frame;
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam

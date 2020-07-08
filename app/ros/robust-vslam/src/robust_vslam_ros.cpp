@@ -8,19 +8,19 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <opencv2/core/core.hpp>
 #include <gflags/gflags.h>
-#include "lzbslam/visual_odometry.h"
-#include "lzbslam/frame.h"
+#include "robust_vslam/System.h"
+#include "robust_vslam/frame.h"
 using namespace std;
-DEFINE_string(config_file, "/home/lzb/Projects/robust-vslam/config/default.yaml", "config file path");
+DEFINE_string(config_file, "/home/lzb/Projects/robust_vslam/config/default.yaml", "config file path");
 //void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
 class ImageGrabber
 {
 public:
-    ImageGrabber(lzbslam::VisualOdometry *pSLAM) : mp_vo(pSLAM) {}
+    ImageGrabber(robust_vslam::System *pSLAM) : mp_vo(pSLAM) {}
 
     void Get_stereo_data(const sensor_msgs::ImageConstPtr &msgLeft, const sensor_msgs::ImageConstPtr &msgRight);
 
-    lzbslam::VisualOdometry *mp_vo;
+    robust_vslam::System *mp_vo;
 };
 
 int main(int argc, char **argv)
@@ -29,10 +29,10 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ros_stereo");
     ros::start();
     // 初始化slam系统，传入config文件地址
-    lzbslam::VisualOdometry *vo(
-        new lzbslam::VisualOdometry(FLAGS_config_file));
-    vo->Init_StereoRos();
-    //assert(vo->Init_StereoRos() == true);
+    robust_vslam::System *vo(
+        new robust_vslam::System(FLAGS_config_file));
+    vo->Init_System();
+    //assert(vo->Init_System() == true);
 
     ImageGrabber igb(vo);
 
@@ -93,7 +93,7 @@ void ImageGrabber::Get_stereo_data(const sensor_msgs::ImageConstPtr &msgLeft, co
     cv::resize(image_right, image_right_resized, cv::Size(), 0.6, 0.6,
                cv::INTER_NEAREST);
 
-    lzbslam::Frame::Ptr new_frame1 = lzbslam::Frame::CreateFrame(); //lzbslam::Frame::CreateFrame();
+    robust_vslam::Frame::Ptr new_frame1 = robust_vslam::Frame::CreateFrame(); //robust_vslam::Frame::CreateFrame();
     new_frame1->left_img_ = image_left;
     new_frame1->right_img_ = image_right;
 

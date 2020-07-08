@@ -1,10 +1,10 @@
 #pragma once
-#ifndef lzbslam_MAPPOINT_H
-#define lzbslam_MAPPOINT_H
+#ifndef robust_vslam_MAPPOINT_H
+#define robust_vslam_MAPPOINT_H
 
-#include "lzbslam/common_include.h"
+#include "robust_vslam/common_include.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 struct Frame;
@@ -61,6 +61,6 @@ public:
     // factory function
     static MapPoint::Ptr CreateNewMappoint();
 };
-} // namespace lzbslam
+} // namespace robust_vslam
 
-#endif // lzbslam_MAPPOINT_H
+#endif // robust_vslam_MAPPOINT_H

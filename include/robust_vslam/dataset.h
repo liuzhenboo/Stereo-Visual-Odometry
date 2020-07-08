@@ -1,10 +1,10 @@
-#ifndef lzbslam_DATASET_H
-#define lzbslam_DATASET_H
-#include "lzbslam/camera.h"
-#include "lzbslam/common_include.h"
-#include "lzbslam/frame.h"
+#ifndef robust_vslam_DATASET_H
+#define robust_vslam_DATASET_H
+#include "robust_vslam/camera.h"
+#include "robust_vslam/common_include.h"
+#include "robust_vslam/frame.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 /**
@@ -39,6 +39,6 @@ private:
 
     std::vector<Camera::Ptr> cameras_;
 };
-} // namespace lzbslam
+} // namespace robust_vslam
 
 #endif

@@ -8,9 +8,9 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <opencv2/core/core.hpp>
 #include <gflags/gflags.h>
-#include "lzbslam/visual_odometry.h"
+#include "robust_vslam/System.h"
 
-DEFINE_string(config_file, "/home/lzb/Projects/robust-vslam/config/default.yaml", "config file path");
+DEFINE_string(config_file, "/home/lzb/Projects/robust_vslam/config/default.yaml", "config file path");
 
 int main(int argc, char **argv)
 {
@@ -18,8 +18,8 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ros_stereo");
     ros::start();
     // 初始化slam系统，传入config文件地址
-    lzbslam::VisualOdometry::Ptr vo(
-        new lzbslam::VisualOdometry(FLAGS_config_file));
+    robust_vslam::System::Ptr vo(
+        new robust_vslam::System(FLAGS_config_file));
     assert(vo->Init_ros() == true);
 
     ros::NodeHandle nh;

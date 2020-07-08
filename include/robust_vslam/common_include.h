@@ -1,6 +1,6 @@
 #pragma once
-#ifndef lzbslam_COMMON_INCLUDE_H
-#define lzbslam_COMMON_INCLUDE_H
+#ifndef robust_vslam_COMMON_INCLUDE_H
+#define robust_vslam_COMMON_INCLUDE_H
 
 // std
 #include <atomic>
@@ -114,4 +114,4 @@ using cv::Mat;
 // glog
 #include <glog/logging.h>
 
-#endif // lzbslam_COMMON_INCLUDE_H
+#endif // robust_vslam_COMMON_INCLUDE_H

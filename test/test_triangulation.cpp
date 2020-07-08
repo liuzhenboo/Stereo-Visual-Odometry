@@ -2,10 +2,10 @@
 // Created by gaoxiang on 19-5-4.
 //
 #include <gtest/gtest.h>
-#include "lzbslam/common_include.h"
-#include "lzbslam/algorithm.h"
+#include "robust_vslam/common_include.h"
+#include "robust_vslam/algorithm.h"
 
-TEST(lzbslamTest, Triangulation)
+TEST(robust_vslamTest, Triangulation)
 {
     Vec3 pt_world(30, 20, 10), pt_world_estimated;
     std::vector<SE3> poses{
@@ -21,7 +21,7 @@ TEST(lzbslamTest, Triangulation)
         points.push_back(pc);
     }
 
-    EXPECT_TRUE(lzbslam::triangulation(poses, points, pt_world_estimated));
+    EXPECT_TRUE(robust_vslam::triangulation(poses, points, pt_world_estimated));
     EXPECT_NEAR(pt_world[0], pt_world_estimated[0], 0.01);
     EXPECT_NEAR(pt_world[1], pt_world_estimated[1], 0.01);
     EXPECT_NEAR(pt_world[2], pt_world_estimated[2], 0.01);

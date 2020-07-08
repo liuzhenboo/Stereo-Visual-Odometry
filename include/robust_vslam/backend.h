@@ -1,11 +1,11 @@
-#ifndef lzbslam_BACKEND_H
-#define lzbslam_BACKEND_H
+#ifndef robust_vslam_BACKEND_H
+#define robust_vslam_BACKEND_H
 
-#include "lzbslam/common_include.h"
-#include "lzbslam/frame.h"
-#include "lzbslam/map.h"
+#include "robust_vslam/common_include.h"
+#include "robust_vslam/frame.h"
+#include "robust_vslam/map.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 class Map;
 
@@ -59,6 +59,6 @@ private:
     Camera::Ptr cam_left_ = nullptr, cam_right_ = nullptr;
 };
 
-} // namespace lzbslam
+} // namespace robust_vslam
 
-#endif // lzbslam_BACKEND_H
+#endif // robust_vslam_BACKEND_H

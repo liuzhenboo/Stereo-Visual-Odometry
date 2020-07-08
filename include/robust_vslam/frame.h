@@ -1,12 +1,12 @@
 #pragma once
 
-#ifndef lzbslam_FRAME_H
-#define lzbslam_FRAME_H
+#ifndef robust_vslam_FRAME_H
+#define robust_vslam_FRAME_H
 
-#include "lzbslam/camera.h"
-#include "lzbslam/common_include.h"
+#include "robust_vslam/camera.h"
+#include "robust_vslam/common_include.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 // forward declare
@@ -64,6 +64,6 @@ public: // data members
     std::vector<uchar> status_;
 };
 
-} // namespace lzbslam
+} // namespace robust_vslam
 
-#endif // lzbslam_FRAME_H
+#endif // robust_vslam_FRAME_H

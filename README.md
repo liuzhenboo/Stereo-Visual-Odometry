@@ -1,5 +1,5 @@
-## robust-vslam 初级版本
-Tips:The basic code framework from robust-vslam comes from [slambook2](https://github.com/gaoxiang12/slambook2)
+## robust_vslam 初级版本
+Tips:The basic code framework from robust_vslam comes from [slambook2](https://github.com/gaoxiang12/slambook2)
 
 ## 存在问题
 

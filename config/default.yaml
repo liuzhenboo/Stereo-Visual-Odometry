@@ -75,7 +75,7 @@ iterationsCount: 500
 reprojectionError: 0.5
 confidence: 0.99
 
-orb_dir: /home/lzb/Projects/robust-vslam/config/orb.yaml
+orb_dir: /home/lzb/Projects/robust_vslam/config/orb.yaml
 display_scale: 10
 display_x: 300
 display_y: 100

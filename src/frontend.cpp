@@ -1,16 +1,16 @@
 #include <opencv2/opencv.hpp>
-#include "lzbslam/algorithm.h"
-#include "lzbslam/backend.h"
-#include "lzbslam/config.h"
-#include "lzbslam/feature.h"
-#include "lzbslam/visual_odometry.h"
+#include "robust_vslam/algorithm.h"
+#include "robust_vslam/backend.h"
+#include "robust_vslam/config.h"
+#include "robust_vslam/feature.h"
+#include "robust_vslam/System.h"
 
-#include "lzbslam/g2o_types.h"
-#include "lzbslam/map.h"
-#include "lzbslam/viewer.h"
-#include "lzbslam/frontend.h"
+#include "robust_vslam/g2o_types.h"
+#include "robust_vslam/map.h"
+#include "robust_vslam/viewer.h"
+#include "robust_vslam/frontend.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 Frontend::Frontend()
@@ -72,7 +72,7 @@ Frontend::Frontend()
     mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 }
 // 向系统输入新的图片数据
-bool Frontend::AddFrame(lzbslam::Frame::Ptr frame)
+bool Frontend::AddFrame(robust_vslam::Frame::Ptr frame)
 {
     current_frame_ = frame;
     // std::cout << std::endl << "Add a New Stereo Frame!!" << std::endl;
@@ -595,7 +595,7 @@ bool Frontend::LK_StereoF2F_PnP_Track()
               << Px_ << ", " << Py_ << ", " << Pz_ << std::endl;
     display(trajectory_, Px_, Pz_);
     return true;
-} // namespace lzbslam
+} // namespace robust_vslam
 
 void Frontend::displayTracking(cv::Mat &imageLeft_t1,
                                std::vector<cv::Point2f> &pointsLeft_t0,
@@ -624,7 +624,7 @@ void Frontend::displayTracking(cv::Mat &imageLeft_t1,
         cv::line(vis, pointsLeft_t0[i], pointsLeft_t1[i], CV_RGB(0, 255, 0));
     }
 
-    cv::imshow("robust-vslam ", vis);
+    cv::imshow("robust_vslam ", vis);
 }
 
 bool Frontend::slambook_EstimatePose_PnP(cv::Mat &projMatrl,
@@ -933,7 +933,7 @@ int Frontend::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> 
                 good++;
             }
         }
-    } // namespace lzbslam
+    } // namespace robust_vslam
     points_t1_left.resize(good);
     points_t2_left.resize(good);
     points_t1_right.resize(good);
@@ -1313,9 +1313,9 @@ int Frontend::RANSAC(std::vector<std::shared_ptr<Feature>> &Features_1, std::vec
 {
     return 0;
 }
-void Frontend::Set_vo(VisualOdometry *vo)
+void Frontend::Set_vo(System *vo)
 {
     vo_ = vo;
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam

@@ -1,11 +1,11 @@
-#include "lzbslam/backend.h"
-#include "lzbslam/algorithm.h"
-#include "lzbslam/feature.h"
-#include "lzbslam/g2o_types.h"
-#include "lzbslam/map.h"
-#include "lzbslam/mappoint.h"
+#include "robust_vslam/backend.h"
+#include "robust_vslam/algorithm.h"
+#include "robust_vslam/feature.h"
+#include "robust_vslam/g2o_types.h"
+#include "robust_vslam/map.h"
+#include "robust_vslam/mappoint.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 Backend::Backend()
@@ -208,4 +208,4 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
     }
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam

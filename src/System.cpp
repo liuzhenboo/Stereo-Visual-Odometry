@@ -1,45 +1,15 @@
 #include <chrono>
-#include "lzbslam/config.h"
-#include "lzbslam/frontend.h"
-#include "lzbslam/visual_odometry.h"
+#include "robust_vslam/config.h"
+#include "robust_vslam/frontend.h"
+#include "robust_vslam/System.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
-VisualOdometry::VisualOdometry(std::string &config_path)
+System::System(std::string &config_path)
     : config_file_path_(config_path) {}
 
-bool VisualOdometry::Init()
-{
-    // read from config file
-    if (Config::SetParameterFile(config_file_path_) == false)
-    {
-        return false;
-    }
-
-    dataset_ =
-        Dataset::Ptr(new Dataset(Config::Get<std::string>("dataset_dir_kitti")));
-    // CHECK_EQ 用来判断两个值是否相等；Init()读内外参到dataset_中
-    CHECK_EQ(dataset_->Init(), true);
-
-    frontend_ = Frontend::Ptr(new Frontend);
-    backend_ = Backend::Ptr(new Backend);
-    map_ = Map::Ptr(new Map);
-    viewer_ = Viewer::Ptr(new Viewer);
-
-    frontend_->SetBackend(backend_);
-    frontend_->SetMap(map_);
-    frontend_->SetViewer(viewer_);
-    frontend_->SetCameras(dataset_->GetCamera(0), dataset_->GetCamera(1));
-
-    backend_->SetMap(map_);
-    backend_->SetCameras(dataset_->GetCamera(0), dataset_->GetCamera(1));
-
-    viewer_->SetMap(map_);
-
-    return true;
-}
-bool VisualOdometry::Init_StereoRos()
+bool System::Init_System()
 {
 
     // read from config file
@@ -77,7 +47,7 @@ bool VisualOdometry::Init_StereoRos()
 
     return true;
 }
-void VisualOdometry::Run()
+void System::Run()
 {
     while (1)
     {
@@ -92,7 +62,7 @@ void VisualOdometry::Run()
 }
 
 // 主程序
-bool VisualOdometry::Step()
+bool System::Step()
 {
     Frame::Ptr new_frame = dataset_->NextFrame();
     if (new_frame == nullptr)
@@ -106,7 +76,7 @@ bool VisualOdometry::Step()
     LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
     return 1;
 }
-bool VisualOdometry::Step_ros(Frame::Ptr new_frame)
+bool System::Step_ros(Frame::Ptr new_frame)
 {
 
     if (new_frame == nullptr)
@@ -121,7 +91,7 @@ bool VisualOdometry::Step_ros(Frame::Ptr new_frame)
     LOG(INFO) << "VO cost time: " << time_used.count() << " seconds.";
     return success;
 }
-void VisualOdometry::Shutdown()
+void System::Shutdown()
 {
     backend_->Stop();
     viewer_->Close();
@@ -130,7 +100,7 @@ void VisualOdometry::Shutdown()
 
 // 跟踪失败之后重置系统。
 // 先重置地图，后端优化，显示，再给跟踪线程初始化标志位。
-void VisualOdometry::Reset()
+void System::Reset()
 {
     map_->Reset_Map();
     backend_->Reset();
@@ -138,4 +108,4 @@ void VisualOdometry::Reset()
     frontend_->SetStatus(FrontendStatus::INITING);
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam

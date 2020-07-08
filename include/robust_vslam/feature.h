@@ -1,13 +1,13 @@
 #pragma once
 
-#ifndef lzbslam_FEATURE_H
-#define lzbslam_FEATURE_H
+#ifndef robust_vslam_FEATURE_H
+#define robust_vslam_FEATURE_H
 
 #include <memory>
 #include <opencv2/features2d.hpp>
-#include "lzbslam/common_include.h"
+#include "robust_vslam/common_include.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 struct Frame;
@@ -36,6 +36,6 @@ public:
     Feature(std::shared_ptr<Frame> frame, const cv::KeyPoint &kp)
         : frame_(frame), position_(kp) {}
 };
-} // namespace lzbslam
+} // namespace robust_vslam
 
-#endif // lzbslam_FEATURE_H
+#endif // robust_vslam_FEATURE_H

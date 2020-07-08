@@ -1,11 +1,11 @@
 #pragma once
 
-#ifndef lzbslam_CAMERA_H
-#define lzbslam_CAMERA_H
+#ifndef robust_vslam_CAMERA_H
+#define robust_vslam_CAMERA_H
 
-#include "lzbslam/common_include.h"
+#include "robust_vslam/common_include.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 // Pinhole stereo camera model
@@ -56,5 +56,5 @@ public:
     Vec2 world2pixel(const Vec3 &p_w, const SE3 &T_c_w);
 };
 
-} // namespace lzbslam
-#endif // lzbslam_CAMERA_H
+} // namespace robust_vslam
+#endif // robust_vslam_CAMERA_H

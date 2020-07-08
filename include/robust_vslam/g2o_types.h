@@ -2,10 +2,10 @@
 // Created by gaoxiang on 19-5-4.
 //
 
-#ifndef lzbslam_G2O_TYPES_H
-#define lzbslam_G2O_TYPES_H
+#ifndef robust_vslam_G2O_TYPES_H
+#define robust_vslam_G2O_TYPES_H
 
-#include "lzbslam/common_include.h"
+#include "robust_vslam/common_include.h"
 
 #include <g2o/core/base_binary_edge.h>
 #include <g2o/core/base_unary_edge.h>
@@ -19,7 +19,7 @@
 #include <g2o/solvers/csparse/linear_solver_csparse.h>
 #include <g2o/solvers/dense/linear_solver_dense.h>
 
-namespace lzbslam
+namespace robust_vslam
 {
 /// vertex and edges used in g2o ba
 /// 位姿顶点
@@ -164,6 +164,6 @@ private:
     SE3 _cam_ext;
 };
 
-} // namespace lzbslam
+} // namespace robust_vslam
 
-#endif // lzbslam_G2O_TYPES_H
+#endif // robust_vslam_G2O_TYPES_H

@@ -2,13 +2,13 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include "lzbslam/common_include.h"
-#include "lzbslam/config.h"
+#include "robust_vslam/common_include.h"
+#include "robust_vslam/config.h"
 
-#include "lzbslam/frame.h"
-#include "lzbslam/mappoint.h"
+#include "robust_vslam/frame.h"
+#include "robust_vslam/mappoint.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 /**
@@ -85,6 +85,6 @@ private:
     // settings
     int num_active_keyframes_ = 7; // 激活的关键帧数量
 };
-} // namespace lzbslam
+} // namespace robust_vslam
 
 #endif // MAP_H

@@ -1,7 +1,7 @@
 
-#include "lzbslam/feature.h"
+#include "robust_vslam/feature.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 }

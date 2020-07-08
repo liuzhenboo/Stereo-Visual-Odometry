@@ -1,7 +1,7 @@
-#include "lzbslam/map.h"
-#include "lzbslam/feature.h"
+#include "robust_vslam/map.h"
+#include "robust_vslam/feature.h"
 
-namespace lzbslam
+namespace robust_vslam
 {
 
 void Map::InsertKeyFrame(Frame::Ptr frame)
@@ -123,4 +123,4 @@ void Map::CleanMap()
     LOG(INFO) << "Removed " << cnt_landmark_removed << " active landmarks";
 }
 
-} // namespace lzbslam
+} // namespace robust_vslam
