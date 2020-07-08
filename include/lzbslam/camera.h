@@ -1,11 +1,11 @@
 #pragma once
 
-#ifndef MYSLAM_CAMERA_H
-#define MYSLAM_CAMERA_H
+#ifndef lzbslam_CAMERA_H
+#define lzbslam_CAMERA_H
 
-#include "myslam/common_include.h"
+#include "lzbslam/common_include.h"
 
-namespace myslam
+namespace lzbslam
 {
 
 // Pinhole stereo camera model
@@ -56,5 +56,5 @@ public:
     Vec2 world2pixel(const Vec3 &p_w, const SE3 &T_c_w);
 };
 
-} // namespace myslam
-#endif // MYSLAM_CAMERA_H
+} // namespace lzbslam
+#endif // lzbslam_CAMERA_H

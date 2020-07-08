@@ -5,7 +5,7 @@
 #include <list>
 #include <opencv/cv.h>
 
-namespace myslam
+namespace lzbslam
 {
 
 class ExtractorNode
@@ -99,6 +99,6 @@ protected:
     std::vector<float> mvInvLevelSigma2;
 };
 
-} // namespace myslam
+} // namespace lzbslam
 
 #endif

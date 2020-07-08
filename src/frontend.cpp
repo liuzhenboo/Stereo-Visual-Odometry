@@ -1,16 +1,16 @@
 #include <opencv2/opencv.hpp>
-#include "myslam/algorithm.h"
-#include "myslam/backend.h"
-#include "myslam/config.h"
-#include "myslam/feature.h"
-#include "myslam/visual_odometry.h"
+#include "lzbslam/algorithm.h"
+#include "lzbslam/backend.h"
+#include "lzbslam/config.h"
+#include "lzbslam/feature.h"
+#include "lzbslam/visual_odometry.h"
 
-#include "myslam/g2o_types.h"
-#include "myslam/map.h"
-#include "myslam/viewer.h"
-#include "myslam/frontend.h"
+#include "lzbslam/g2o_types.h"
+#include "lzbslam/map.h"
+#include "lzbslam/viewer.h"
+#include "lzbslam/frontend.h"
 
-namespace myslam
+namespace lzbslam
 {
 
 Frontend::Frontend()
@@ -72,7 +72,7 @@ Frontend::Frontend()
     mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 }
 // 向系统输入新的图片数据
-bool Frontend::AddFrame(myslam::Frame::Ptr frame)
+bool Frontend::AddFrame(lzbslam::Frame::Ptr frame)
 {
     current_frame_ = frame;
     // std::cout << std::endl << "Add a New Stereo Frame!!" << std::endl;
@@ -595,7 +595,7 @@ bool Frontend::LK_StereoF2F_PnP_Track()
               << Px_ << ", " << Py_ << ", " << Pz_ << std::endl;
     display(trajectory_, Px_, Pz_);
     return true;
-} // namespace myslam
+} // namespace lzbslam
 
 void Frontend::displayTracking(cv::Mat &imageLeft_t1,
                                std::vector<cv::Point2f> &pointsLeft_t0,
@@ -933,7 +933,7 @@ int Frontend::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> 
                 good++;
             }
         }
-    } // namespace myslam
+    } // namespace lzbslam
     points_t1_left.resize(good);
     points_t2_left.resize(good);
     points_t1_right.resize(good);
@@ -1318,4 +1318,4 @@ void Frontend::Set_vo(VisualOdometry *vo)
     vo_ = vo;
 }
 
-} // namespace myslam
+} // namespace lzbslam

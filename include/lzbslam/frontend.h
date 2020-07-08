@@ -1,16 +1,16 @@
 #pragma once
-#ifndef MYSLAM_FRONTEND_H
-#define MYSLAM_FRONTEND_H
+#ifndef lzbslam_FRONTEND_H
+#define lzbslam_FRONTEND_H
 
 #include <opencv2/features2d.hpp>
-#include "myslam/ORBextractor.h"
+#include "lzbslam/ORBextractor.h"
 
-//#include "myslam/visual_odometry.h"
-#include "myslam/algorithm.h"
-#include "myslam/frame.h"
-#include "myslam/map.h"
+//#include "lzbslam/visual_odometry.h"
+#include "lzbslam/algorithm.h"
+#include "lzbslam/frame.h"
+#include "lzbslam/map.h"
 
-namespace myslam
+namespace lzbslam
 {
 class VisualOdometry;
 class Backend;
@@ -46,7 +46,7 @@ public:
    double minmove_ = 0.01;
    double maxmove_ = 0.01;
    std::string orb_dir_;
-   myslam::ORBextractor *mpORBextractorLeft;
+   lzbslam::ORBextractor *mpORBextractorLeft;
    cv::Mat trajectory_ = cv::Mat::zeros(600, 1200, CV_8UC3);
    //cv::Mat translation_;
    double Px_ = 0;
@@ -240,6 +240,6 @@ private:
    std::string track_mode_ = "stereoicp_f2f";
 };
 
-} // namespace myslam
+} // namespace lzbslam
 
-#endif // MYSLAM_FRONTEND_H
+#endif // lzbslam_FRONTEND_H
