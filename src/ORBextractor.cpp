@@ -5,13 +5,13 @@
 #include <vector>
 #include <iterator>
 
-#include "myslam/ORBextractor.h"
+#include "lzbslam/ORBextractor.h"
 #include <iostream>
 
 using namespace cv;
 using namespace std;
 
-namespace myslam
+namespace lzbslam
 {
 
 const int PATCH_SIZE = 31;
@@ -1084,4 +1084,4 @@ void ORBextractor::ComputePyramid(cv::Mat image)
     }
 }
 
-} // namespace myslam
+} // namespace lzbslam

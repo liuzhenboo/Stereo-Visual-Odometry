@@ -76,7 +76,7 @@ set(LIBS
 ${OpenCV_LIBS} 
 ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
-${PROJECT_SOURCE_DIR}/../../../lib/libmyslam.so
+${PROJECT_SOURCE_DIR}/../../../lib/liblzbslam.so
 ${OpenCV_LIBS}
 ${Pangolin_LIBRARIES} GL GLU GLEW glut
 g2o_core g2o_stuff g2o_types_sba g2o_solver_csparse g2o_csparse_extension

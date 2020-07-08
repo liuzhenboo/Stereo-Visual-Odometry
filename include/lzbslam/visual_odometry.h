@@ -1,23 +1,25 @@
 #pragma once
-#ifndef MYSLAM_VISUAL_ODOMETRY_H
-#define MYSLAM_VISUAL_ODOMETRY_H
+#ifndef lzbslam_VISUAL_ODOMETRY_H
+#define lzbslam_VISUAL_ODOMETRY_H
 
-#include "myslam/backend.h"
-#include "myslam/common_include.h"
-#include "myslam/dataset.h"
-#include "myslam/frontend.h"
-#include "myslam/viewer.h"
-#include "myslam/frame.h"
+#include "lzbslam/backend.h"
+#include "lzbslam/common_include.h"
+#include "lzbslam/dataset.h"
+#include "lzbslam/frontend.h"
+#include "lzbslam/viewer.h"
+#include "lzbslam/frame.h"
 
-namespace myslam {
+namespace lzbslam
+{
 /**
  * VO 对外接口
  */
-class VisualOdometry {
-   public:
+class VisualOdometry
+{
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     //typedef std::shared_ptr<VisualOdometry> Ptr;
-    Frame::Ptr current_frame2_ = nullptr;  // 当前帧
+    Frame::Ptr current_frame2_ = nullptr; // 当前帧
 
     /// constructor with config file
     VisualOdometry(std::string &config_path);
@@ -49,7 +51,7 @@ class VisualOdometry {
     /// 获取前端状态
     FrontendStatus GetFrontendStatus() const { return frontend_->GetStatus(); }
 
-   private:
+private:
     bool inited_ = false;
     std::string config_file_path_;
 
@@ -61,6 +63,6 @@ class VisualOdometry {
     // dataset
     Dataset::Ptr dataset_ = nullptr;
 };
-}  // namespace myslam
+} // namespace lzbslam
 
-#endif  // MYSLAM_VISUAL_ODOMETRY_H
+#endif // lzbslam_VISUAL_ODOMETRY_H

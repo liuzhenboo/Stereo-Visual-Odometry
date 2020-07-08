@@ -1,51 +1,54 @@
-#ifndef MYSLAM_VIEWER_H
-#define MYSLAM_VIEWER_H
+#ifndef lzbslam_VIEWER_H
+#define lzbslam_VIEWER_H
 
 #include <thread>
 #include <pangolin/pangolin.h>
 
-#include "myslam/common_include.h"
-#include "myslam/frame.h"
-#include "myslam/map.h"
+#include "lzbslam/common_include.h"
+#include "lzbslam/frame.h"
+#include "lzbslam/map.h"
 
-namespace myslam {
+namespace lzbslam
+{
 
 /**
  * 可视化
  */
-class Viewer {
-   public:
+class Viewer
+{
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<Viewer> Ptr;
 
     Viewer();
 
     void SetMap(Map::Ptr map) { map_ = map; }
-    
+
     void Close();
 
     // 增加一个当前帧
     void AddCurrentFrame(Frame::Ptr current_frame);
-    
+
     // 后端重置
-    void Reset(){
-    active_keyframes_.clear();
-    active_landmarks_.clear();
-    current_frame_ = nullptr;
-    map_updated_ = false;
+    void Reset()
+    {
+        active_keyframes_.clear();
+        active_landmarks_.clear();
+        current_frame_ = nullptr;
+        map_updated_ = false;
     }
-    
+
     // 更新地图
     void UpdateMap();
 
-   private:
+private:
     void ThreadLoop();
 
-    void DrawFrame(Frame::Ptr frame, const float* color);
+    void DrawFrame(Frame::Ptr frame, const float *color);
 
     void DrawMapPoints();
 
-    void FollowCurrentFrame(pangolin::OpenGlRenderState& vis_camera);
+    void FollowCurrentFrame(pangolin::OpenGlRenderState &vis_camera);
 
     /// plot the features in current frame into an image
     cv::Mat PlotFrameImage();
@@ -64,6 +67,6 @@ class Viewer {
 
     std::mutex viewer_data_mutex_;
 };
-}  // namespace myslam
+} // namespace lzbslam
 
-#endif  // MYSLAM_VIEWER_H
+#endif // lzbslam_VIEWER_H

@@ -1,37 +1,43 @@
-#include "myslam/backend.h"
-#include "myslam/algorithm.h"
-#include "myslam/feature.h"
-#include "myslam/g2o_types.h"
-#include "myslam/map.h"
-#include "myslam/mappoint.h"
+#include "lzbslam/backend.h"
+#include "lzbslam/algorithm.h"
+#include "lzbslam/feature.h"
+#include "lzbslam/g2o_types.h"
+#include "lzbslam/map.h"
+#include "lzbslam/mappoint.h"
 
-namespace myslam {
+namespace lzbslam
+{
 
-Backend::Backend() {
+Backend::Backend()
+{
     backend_running_.store(true);
     backend_thread_ = std::thread(std::bind(&Backend::BackendLoop, this));
 }
 
-void Backend::Reset(){
+void Backend::Reset()
+{
     //std::unique_lock<std::mutex> lock(data_mutex_);
     //map_.reset(new Map);
-
 }
 
-void Backend::UpdateMap() {
+void Backend::UpdateMap()
+{
     std::unique_lock<std::mutex> lock(data_mutex_);
     map_update_.notify_one();
 }
 
-void Backend::Stop() {
+void Backend::Stop()
+{
     backend_running_.store(false);
     map_update_.notify_one();
     backend_thread_.join();
 }
 
 // 后端线程
-void Backend::BackendLoop() {
-    while (backend_running_.load()) {
+void Backend::BackendLoop()
+{
+    while (backend_running_.load())
+    {
         std::unique_lock<std::mutex> lock(data_mutex_);
         map_update_.wait(lock);
 
@@ -43,7 +49,8 @@ void Backend::BackendLoop() {
 }
 
 void Backend::Optimize(Map::KeyframesType &keyframes,
-                       Map::LandmarksType &landmarks) {
+                       Map::LandmarksType &landmarks)
+{
     // setup g2o
     typedef g2o::BlockSolver_6_3 BlockSolverType;
     typedef g2o::LinearSolverCSparse<BlockSolverType::PoseMatrixType>
@@ -57,13 +64,15 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
     // pose 顶点，使用Keyframe id
     std::map<unsigned long, VertexPose *> vertices;
     unsigned long max_kf_id = 0;
-    for (auto &keyframe : keyframes) {
+    for (auto &keyframe : keyframes)
+    {
         auto kf = keyframe.second;
-        VertexPose *vertex_pose = new VertexPose();  // camera vertex_pose
+        VertexPose *vertex_pose = new VertexPose(); // camera vertex_pose
         vertex_pose->setId(kf->keyframe_id_);
         vertex_pose->setEstimate(kf->Pose());
         optimizer.addVertex(vertex_pose);
-        if (kf->keyframe_id_ > max_kf_id) {
+        if (kf->keyframe_id_ > max_kf_id)
+        {
             max_kf_id = kf->keyframe_id_;
         }
 
@@ -80,29 +89,38 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
 
     // edges
     int index = 1;
-    double chi2_th = 5.991;  // robust kernel 阈值
+    double chi2_th = 5.991; // robust kernel 阈值
     std::map<EdgeProjection *, Feature::Ptr> edges_and_features;
 
-    for (auto &landmark : landmarks) {
-        if (landmark.second->is_outlier_) continue;
+    for (auto &landmark : landmarks)
+    {
+        if (landmark.second->is_outlier_)
+            continue;
         unsigned long landmark_id = landmark.second->id_;
         auto observations = landmark.second->GetObs();
-        for (auto &obs : observations) {
-            if (obs.lock() == nullptr) continue;
+        for (auto &obs : observations)
+        {
+            if (obs.lock() == nullptr)
+                continue;
             auto feat = obs.lock();
-            if (feat->is_outlier_ || feat->frame_.lock() == nullptr) continue;
+            if (feat->is_outlier_ || feat->frame_.lock() == nullptr)
+                continue;
 
             auto frame = feat->frame_.lock();
             EdgeProjection *edge = nullptr;
-            if (feat->is_on_left_image_) {
+            if (feat->is_on_left_image_)
+            {
                 edge = new EdgeProjection(K, left_ext);
-            } else {
+            }
+            else
+            {
                 edge = new EdgeProjection(K, right_ext);
             }
 
             // 如果landmark还没有被加入优化，则新加一个顶点
             if (vertices_landmarks.find(landmark_id) ==
-                vertices_landmarks.end()) {
+                vertices_landmarks.end())
+            {
                 VertexXYZ *v = new VertexXYZ;
                 v->setEstimate(landmark.second->Pos());
                 v->setId(landmark_id + max_kf_id + 1);
@@ -112,8 +130,8 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
             }
 
             edge->setId(index);
-            edge->setVertex(0, vertices.at(frame->keyframe_id_));    // pose
-            edge->setVertex(1, vertices_landmarks.at(landmark_id));  // landmark
+            edge->setVertex(0, vertices.at(frame->keyframe_id_));   // pose
+            edge->setVertex(1, vertices_landmarks.at(landmark_id)); // landmark
             edge->setMeasurement(toVec2(feat->position_.pt));
             edge->setInformation(Mat22::Identity());
             auto rk = new g2o::RobustKernelHuber();
@@ -133,33 +151,45 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
 
     int cnt_outlier = 0, cnt_inlier = 0;
     int iteration = 0;
-    while (iteration < 5) {
+    while (iteration < 5)
+    {
         cnt_outlier = 0;
         cnt_inlier = 0;
         // determine if we want to adjust the outlier threshold
-        for (auto &ef : edges_and_features) {
-            if (ef.first->chi2() > chi2_th) {
+        for (auto &ef : edges_and_features)
+        {
+            if (ef.first->chi2() > chi2_th)
+            {
                 //std::cout << "外点误差：" << ef.first->chi2() << std::endl;
                 cnt_outlier++;
-            } else {
+            }
+            else
+            {
                 cnt_inlier++;
             }
         }
         double inlier_ratio = cnt_inlier / double(cnt_inlier + cnt_outlier);
-        if (inlier_ratio > 0.5) {
+        if (inlier_ratio > 0.5)
+        {
             break;
-        } else {
+        }
+        else
+        {
             chi2_th *= 2;
             iteration++;
         }
     }
 
-    for (auto &ef : edges_and_features) {
-        if (ef.first->chi2() > chi2_th) {
+    for (auto &ef : edges_and_features)
+    {
+        if (ef.first->chi2() > chi2_th)
+        {
             ef.second->is_outlier_ = true;
             // remove the observation
             ef.second->map_point_.lock()->RemoveObservation(ef.second);
-        } else {
+        }
+        else
+        {
             ef.second->is_outlier_ = false;
         }
     }
@@ -168,12 +198,14 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
               << cnt_inlier;
 
     // Set pose and lanrmark position
-    for (auto &v : vertices) {
+    for (auto &v : vertices)
+    {
         keyframes.at(v.first)->SetPose(v.second->estimate());
     }
-    for (auto &v : vertices_landmarks) {
+    for (auto &v : vertices_landmarks)
+    {
         landmarks.at(v.first)->SetPos(v.second->estimate());
     }
 }
 
-}  // namespace myslam
+} // namespace lzbslam

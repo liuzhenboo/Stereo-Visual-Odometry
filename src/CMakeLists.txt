@@ -1,4 +1,4 @@
-add_library(myslam SHARED
+add_library(lzbslam SHARED
         frame.cpp
         mappoint.cpp
         map.cpp
@@ -12,5 +12,5 @@ add_library(myslam SHARED
         dataset.cpp
         ORBextractor.cpp)
 
-target_link_libraries(myslam
+target_link_libraries(lzbslam
         ${THIRD_PARTY_LIBS})

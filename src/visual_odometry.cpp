@@ -1,9 +1,9 @@
 #include <chrono>
-#include "myslam/config.h"
-#include "myslam/frontend.h"
-#include "myslam/visual_odometry.h"
+#include "lzbslam/config.h"
+#include "lzbslam/frontend.h"
+#include "lzbslam/visual_odometry.h"
 
-namespace myslam
+namespace lzbslam
 {
 
 VisualOdometry::VisualOdometry(std::string &config_path)
@@ -138,4 +138,4 @@ void VisualOdometry::Reset()
     frontend_->SetStatus(FrontendStatus::INITING);
 }
 
-} // namespace myslam
+} // namespace lzbslam

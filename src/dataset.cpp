@@ -1,12 +1,12 @@
-#include "myslam/dataset.h"
-#include "myslam/frame.h"
-#include "myslam/config.h"
+#include "lzbslam/dataset.h"
+#include "lzbslam/frame.h"
+#include "lzbslam/config.h"
 #include <boost/format.hpp>
 #include <fstream>
 #include <opencv2/opencv.hpp>
 using namespace std;
 
-namespace myslam
+namespace lzbslam
 {
 
 Dataset::Dataset(const std::string &dataset_path)
@@ -110,4 +110,4 @@ Frame::Ptr Dataset::NextFrame()
     return new_frame;
 }
 
-} // namespace myslam
+} // namespace lzbslam

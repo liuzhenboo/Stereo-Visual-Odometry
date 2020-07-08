@@ -1,20 +1,22 @@
-#ifndef MYSLAM_BACKEND_H
-#define MYSLAM_BACKEND_H
+#ifndef lzbslam_BACKEND_H
+#define lzbslam_BACKEND_H
 
-#include "myslam/common_include.h"
-#include "myslam/frame.h"
-#include "myslam/map.h"
+#include "lzbslam/common_include.h"
+#include "lzbslam/frame.h"
+#include "lzbslam/map.h"
 
-namespace myslam {
+namespace lzbslam
+{
 class Map;
 
 /**
  * 后端
  * 有单独优化线程，在Map更新时启动优化
  * Map更新由前端触发
- */ 
-class Backend {
-   public:
+ */
+class Backend
+{
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<Backend> Ptr;
 
@@ -22,7 +24,8 @@ class Backend {
     Backend();
 
     // 设置左右目的相机，用于获得内外参
-    void SetCameras(Camera::Ptr left, Camera::Ptr right) {
+    void SetCameras(Camera::Ptr left, Camera::Ptr right)
+    {
         cam_left_ = left;
         cam_right_ = right;
     }
@@ -39,12 +42,12 @@ class Backend {
     // 重置后端
     void Reset();
 
-   private:
+private:
     /// 后端线程
     void BackendLoop();
 
     /// 对给定关键帧和路标点进行优化
-    void Optimize(Map::KeyframesType& keyframes, Map::LandmarksType& landmarks);
+    void Optimize(Map::KeyframesType &keyframes, Map::LandmarksType &landmarks);
 
     std::shared_ptr<Map> map_;
     std::thread backend_thread_;
@@ -56,6 +59,6 @@ class Backend {
     Camera::Ptr cam_left_ = nullptr, cam_right_ = nullptr;
 };
 
-}  // namespace myslam
+} // namespace lzbslam
 
-#endif  // MYSLAM_BACKEND_H
+#endif // lzbslam_BACKEND_H
