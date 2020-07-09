@@ -2,6 +2,7 @@
 #ifndef robust_vslam_System_H
 #define robust_vslam_System_H
 
+#include "robust_vslam/parameter.h"
 #include "robust_vslam/common_include.h"
 #include "robust_vslam/frontend.h"
 #include "robust_vslam/frame.h"
@@ -52,6 +53,8 @@ private:
     bool inited_ = false;
     std::string config_file_path_;
 
+    Parameter::Ptr init_parameter_ = nullptr;
+    Sensors::Ptr sensors_ = nullptr;
     Frontend::Ptr frontend_ = nullptr;
 };
 } // namespace robust_vslam

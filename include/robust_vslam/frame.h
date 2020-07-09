@@ -3,7 +3,7 @@
 #ifndef robust_vslam_FRAME_H
 #define robust_vslam_FRAME_H
 
-#include "robust_vslam/camera.h"
+#include "robust_vslam/sensors.h"
 #include "robust_vslam/common_include.h"
 
 namespace robust_vslam

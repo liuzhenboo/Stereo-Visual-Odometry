@@ -21,12 +21,13 @@ System::System(std::string &config_path)
     {
         std::cout << "be able to open xx.yaml file！" << std::endl;
     }
-    dataset_dir_ = Config::Get<std::string>("dataset_dir");
-    
-    Camera 
-    frontend_ = Frontend::Ptr(new Frontend);
+
+    init_parameter_ = Parameter::Ptr(new Parameter);
+    sensors_ = Sensors::Ptr(new Sensors(init_parameter_));
+    frontend_ = Frontend::Ptr(new Frontend(this, init_parameter_, sensors_));
+
     frontend_->Set_vo(this);
-    frontend_->SetCameras(dataset_->GetCamera(0), dataset_->GetCamera(1));
+    frontend_->SetSensorss(camera_);
     return true;
 }
 void System::Run()

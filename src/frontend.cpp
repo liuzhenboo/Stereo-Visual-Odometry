@@ -17,27 +17,6 @@ Frontend::Frontend()
 {
     gftt_ =
         cv::GFTTDetector::create(Config::Get<int>("num_features"), 0.01, 20);
-    num_features_init_ = Config::Get<int>("num_features_init");
-    num_features_ = Config::Get<int>("num_features");
-    num_features_tracking_bad_ = Config::Get<int>("num_features_tracking_bad");
-    num_features_needed_for_keyframe_ = Config::Get<int>("num_features_needed_for_keyframe");
-    init_landmarks_ = Config::Get<int>("init_landmarks");
-    feature_match_error_ = Config::Get<int>("feature_match_error");
-    track_mode_ = Config::Get<std::string>("track_mode");
-    num_features_tracking_ = Config::Get<int>("num_features_tracking");
-    inlier_rate_ = Config::Get<double>("inlier_rate");
-    iterationsCount_ = Config::Get<int>("iterationsCount");
-    reprojectionError_ = Config::Get<float>("reprojectionError");
-    confidence_ = Config::Get<float>("confidence");
-    orb_dir_ = Config::Get<std::string>("orb_dir");
-    display_scale_ = Config::Get<int>("display_scale");
-    display_x_ = Config::Get<int>("display_x");
-    display_y_ = Config::Get<int>("display_y");
-    maxmove_ = Config::Get<double>("maxmove");
-    minmove_ = Config::Get<double>("minmove");
-    t_[0] = 0;
-    t_[1] = 0;
-    t_[2] = 0;
 
     cv::FileStorage fSettings(orb_dir_, cv::FileStorage::READ);
 
