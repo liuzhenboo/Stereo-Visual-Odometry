@@ -22,7 +22,7 @@ public:
     cv::Mat R_lm_ = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat t_lm_ = cv::Mat::zeros(3, 1, CV_64F);
 
-    //Frontend
+    //Tracking
     int num_features_init_;
     int num_features_;
     int num_features_tracking_bad_;

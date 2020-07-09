@@ -1,8 +1,8 @@
 // created by liuzhenbo in 2020/7/9
 
 #pragma once
-#ifndef robust_vslam_FRONTEND_H
-#define robust_vslam_FRONTEND_H
+#ifndef robust_vslam_TRACKING_H
+#define robust_vslam_TRACKING_H
 
 #include <opencv2/features2d.hpp>
 #include "robust_vslam/ORBextractor.h"
@@ -14,7 +14,7 @@ namespace robust_vslam
 {
 class System;
 
-enum class FrontendStatus
+enum class TrackingStatus
 {
   INITING,
   TRACKING_GOOD,
@@ -22,19 +22,19 @@ enum class FrontendStatus
   LOST
 };
 
-class Frontend
+class Tracking
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-  typedef std::shared_ptr<Frontend> Ptr;
+  typedef std::shared_ptr<Tracking> Ptr;
 
   //接口函数
-  Frontend();
+  Tracking();
   void Set_vo(System *vo);
   bool AddFrame(Frame::Ptr frame);
 
 private:
-  FrontendStatus GetStatus() const { return status_; }
+  TrackingStatus GetStatus() const { return status_; }
 
   bool StereoInit_f2f();
 
@@ -94,7 +94,7 @@ private:
   bool isRotationMatrix(cv::Mat &R);
 
   //跟踪状态
-  FrontendStatus status_ = FrontendStatus::INITING;
+  TrackingStatus status_ = TrackingStatus::INITING;
 
   // 前后帧传感器数据
   Frame::Ptr current_frame_ = nullptr; // 当前帧
@@ -141,4 +141,4 @@ private:
 
 } // namespace robust_vslam
 
-#endif // robust_vslam_FRONTEND_H
+#endif // robust_vslam_TRACKING_H

@@ -4,7 +4,7 @@
 
 #include "robust_vslam/parameter.h"
 #include "robust_vslam/common_include.h"
-#include "robust_vslam/frontend.h"
+#include "robust_vslam/tracking.h"
 #include "robust_vslam/frame.h"
 
 namespace robust_vslam
@@ -55,7 +55,7 @@ private:
 
     Parameter::Ptr init_parameter_ = nullptr;
     Sensors::Ptr sensors_ = nullptr;
-    Frontend::Ptr frontend_ = nullptr;
+    Tracking::Ptr frontend_ = nullptr;
 };
 } // namespace robust_vslam
 

@@ -41,7 +41,7 @@ Parameter::Parameter()
     cv::hconcat(K1_ * R_ll, K1_ * t_ll, projMatr1_);
     cv::hconcat(K2_ * R_rl_, K2_ * t_rl, projMatr2_);
 
-    //Frontend
+    //Tracking
     num_features_init_ = Config::Get<int>("num_features_init");
     num_features_ = Config::Get<int>("num_features");
     num_features_tracking_bad_ = Config::Get<int>("num_features_tracking_bad");

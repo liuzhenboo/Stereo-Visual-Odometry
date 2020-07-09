@@ -10,24 +10,24 @@
 #include "robust_vslam/g2o_types.h"
 #include "robust_vslam/map.h"
 #include "robust_vslam/viewer.h"
-#include "robust_vslam/frontend.h"
+#include "robust_vslam/tracking.h"
 
 namespace robust_vslam
 {
 
-Frontend::Frontend(System *system, Parameter::Ptr parameter, Sensors::Ptr sensors)
+Tracking::Tracking(System *system, Parameter::Ptr parameter, Sensors::Ptr sensors)
 {
 
     sensors_ = sensors;
     system_ = system;
-    parameter_ = parameter_;
+    parameter_ = parameter;
     Readparameter();
     //----------------------------------------------------------------------------------
     gftt_ = cv::GFTTDetector::create(GFTTDetector_num_, 0.01, 20);
 
     mpORBextractorLeft_ = new ORBextractor(nFeatures_, fScaleFactor_, nLevels_, fIniThFAST_, fMinThFAST_);
 }
-void Frontend::Readparameter()
+void Tracking::Readparameter()
 {
     num_features_init_ = parameter_->num_features_init_;
     num_features_ = parameter_->num_features_;
@@ -54,7 +54,7 @@ void Frontend::Readparameter()
     fMinThFAST_ = parameter_->fMinThFAST_;
 }
 // 向系统输入新的图片数据
-bool Frontend::AddFrame(robust_vslam::Frame::Ptr frame)
+bool Tracking::AddFrame(robust_vslam::Frame::Ptr frame)
 {
     current_frame_ = frame;
 
@@ -84,7 +84,7 @@ bool Frontend::AddFrame(robust_vslam::Frame::Ptr frame)
     //last_frame_ = current_frame_;
     return true;
 }
-bool Frontend::StereoInit_f2f()
+bool Tracking::StereoInit_f2f()
 {
     int num_features_left = DetectFeatures();
     // 设置初始位姿
@@ -98,7 +98,7 @@ bool Frontend::StereoInit_f2f()
     return true;
 }
 
-bool Frontend::StereoInit()
+bool Tracking::StereoInit()
 {
     //std::cout << "num_features_left" << std::endl;
 
@@ -128,7 +128,7 @@ bool Frontend::StereoInit()
     return false;
 }
 
-int Frontend::DetectFeatures()
+int Tracking::DetectFeatures()
 {
     /*cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
     for (auto &feat : current_frame_->features_left_)
@@ -170,7 +170,7 @@ int Frontend::DetectFeatures()
     return cnt_detected;
 }
 
-bool Frontend::Track()
+bool Tracking::Track()
 {
     if (track_mode_ == "LK_stereof2f_pnp")
     {
@@ -183,7 +183,7 @@ bool Frontend::Track()
         return ORB_StereoF2F_PnP_Track();
     }
 }
-bool Frontend::OpenCV_Triangulation(
+bool Tracking::OpenCV_Triangulation(
     const std::vector<cv::Point2f> &p_1,
     const std::vector<cv::Point2f> &p_2,
     const cv::Mat &t,
@@ -222,7 +222,7 @@ bool Frontend::OpenCV_Triangulation(
     }
     return true;
 }
-bool Frontend::ORB_StereoF2F_PnP_Track()
+bool Tracking::ORB_StereoF2F_PnP_Track()
 {
     int num_features_left = DetectFeatures();
 
@@ -299,7 +299,7 @@ bool Frontend::ORB_StereoF2F_PnP_Track()
     return true;
 }
 
-bool Frontend::LK_StereoF2F_PnP_Track()
+bool Tracking::LK_StereoF2F_PnP_Track()
 {
     int num_features_left = DetectFeatures();
     if (num_features_left < 30)
@@ -387,7 +387,7 @@ bool Frontend::LK_StereoF2F_PnP_Track()
     return true;
 } // namespace robust_vslam
 
-void Frontend::displayTracking(cv::Mat &imageLeft_t1,
+void Tracking::displayTracking(cv::Mat &imageLeft_t1,
                                std::vector<cv::Point2f> &pointsLeft_t0,
                                std::vector<cv::Point2f> &pointsLeft_t1)
 {
@@ -417,7 +417,7 @@ void Frontend::displayTracking(cv::Mat &imageLeft_t1,
     cv::imshow("robust_vslam ", vis);
 }
 
-bool Frontend::G2O_EstimatePose_PnP(cv::Mat &projMatrl,
+bool Tracking::G2O_EstimatePose_PnP(cv::Mat &projMatrl,
                                     std::vector<cv::Point2f> &pointsLeft_t2,
                                     cv::Mat &points3D_t0,
                                     cv::Mat &rotation,
@@ -461,7 +461,7 @@ bool Frontend::G2O_EstimatePose_PnP(cv::Mat &projMatrl,
     }
 }
 
-bool Frontend::isRotationMatrix(cv::Mat &R)
+bool Tracking::isRotationMatrix(cv::Mat &R)
 {
     cv::Mat Rt;
     transpose(R, Rt);
@@ -473,7 +473,7 @@ bool Frontend::isRotationMatrix(cv::Mat &R)
 // Calculates rotation matrix to euler angles
 // The result is the same as MATLAB except the order
 // of the euler angles ( x and z are swapped ).
-cv::Vec3f Frontend::rotationMatrixToEulerAngles(cv::Mat &R)
+cv::Vec3f Tracking::rotationMatrixToEulerAngles(cv::Mat &R)
 {
 
     assert(isRotationMatrix(R));
@@ -497,7 +497,7 @@ cv::Vec3f Frontend::rotationMatrixToEulerAngles(cv::Mat &R)
     }
     return cv::Vec3f(x, y, z);
 }
-bool Frontend::OpenCV_EstimatePose_PnP(cv::Mat &projMatrl,
+bool Tracking::OpenCV_EstimatePose_PnP(cv::Mat &projMatrl,
                                        std::vector<cv::Point2f> &pointsLeft_t2,
                                        cv::Mat &points3D_t0,
                                        cv::Mat &rotation,
@@ -537,7 +537,7 @@ bool Frontend::OpenCV_EstimatePose_PnP(cv::Mat &projMatrl,
     }
 }
 
-int Frontend::ORB_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> &points_t2_left,
+int Tracking::ORB_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> &points_t2_left,
                                                         std::vector<cv::Point2f> &points_t1_left,
                                                         std::vector<cv::Point2f> &points_t1_right)
 {
@@ -593,7 +593,7 @@ int Frontend::ORB_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f>
     return points_t2_left.size();
 }
 
-int Frontend::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> &points_t2_left,
+int Tracking::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> &points_t2_left,
                                                        std::vector<cv::Point2f> &points_t2_right,
                                                        std::vector<cv::Point2f> &points_t1_left,
                                                        std::vector<cv::Point2f> &points_t1_right)
@@ -638,7 +638,7 @@ int Frontend::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> 
                                 status1, status2, status3, status4);
     return points_t1_left.size();
 }
-void Frontend::deleteUnmatchFeaturesCircle(std::vector<cv::Point2f> &points0, std::vector<cv::Point2f> &points1,
+void Tracking::deleteUnmatchFeaturesCircle(std::vector<cv::Point2f> &points0, std::vector<cv::Point2f> &points1,
                                            std::vector<cv::Point2f> &points2, std::vector<cv::Point2f> &points3,
                                            std::vector<cv::Point2f> &points0_return,
                                            std::vector<uchar> &status0, std::vector<uchar> &status1,
@@ -674,7 +674,7 @@ void Frontend::deleteUnmatchFeaturesCircle(std::vector<cv::Point2f> &points0, st
     }
 }
 
-bool Frontend::Reset()
+bool Tracking::Reset()
 {
     LOG(INFO) << "跟踪丢失，重新初始化！. ";
     //status_ = FrontendStatus::INITING;
@@ -686,7 +686,7 @@ bool Frontend::Reset()
     t_[2] = 0;
     return true;
 }
-void Frontend::Set_vo(System *vo)
+void Tracking::Set_vo(System *vo)
 {
     vo_ = vo;
 }

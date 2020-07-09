@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include "robust_vslam/config.h"
-#include "robust_vslam/frontend.h"
+#include "robust_vslam/tracking.h"
 #include "robust_vslam/System.h"
 
 namespace robust_vslam
@@ -26,10 +26,8 @@ System::System(std::string &config_path)
 
     init_parameter_ = Parameter::Ptr(new Parameter);
     sensors_ = Sensors::Ptr(new Sensors(init_parameter_));
-    frontend_ = Frontend::Ptr(new Frontend(this, init_parameter_, sensors_));
+    frontend_ = Tracking::Ptr(new Tracking(this, init_parameter_, sensors_));
 
-    frontend_->Set_vo(this);
-    frontend_->SetSensorss(camera_);
     return true;
 }
 void System::Run()
