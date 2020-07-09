@@ -1,4 +1,4 @@
-## robust_vslam 初级版本
+## robust_vslam 
 Tips:The basic code framework from robust_vslam comes from [slambook2](https://github.com/gaoxiang12/slambook2)
 
 ## 存在问题
@@ -16,5 +16,7 @@ Tips:The basic code framework from robust_vslam comes from [slambook2](https://g
 - 三角化时候，大深度出现的问题。
 - 跟踪的综合设计
 
+## 开发日志
 
+- 7/9 调整代码结构，形成初级版本
 

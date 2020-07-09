@@ -2,11 +2,8 @@
 #ifndef robust_vslam_System_H
 #define robust_vslam_System_H
 
-#include "robust_vslam/backend.h"
 #include "robust_vslam/common_include.h"
-#include "robust_vslam/dataset.h"
 #include "robust_vslam/frontend.h"
-#include "robust_vslam/viewer.h"
 #include "robust_vslam/frame.h"
 
 namespace robust_vslam
@@ -18,11 +15,6 @@ public:
 
     /// constructor with config file
     System(std::string &config_path);
-    /**
-     * 系统初始化 
-     * @return true if success
-     */
-    bool Init_System();
 
     /**
      * 启动系统
@@ -55,16 +47,12 @@ public:
     FrontendStatus GetFrontendStatus() const { return frontend_->GetStatus(); }
 
 private:
+    //config parameter
+    std::string dataset_dir_;
     bool inited_ = false;
     std::string config_file_path_;
 
     Frontend::Ptr frontend_ = nullptr;
-    Backend::Ptr backend_ = nullptr;
-    Map::Ptr map_ = nullptr;
-    Viewer::Ptr viewer_ = nullptr;
-
-    // dataset
-    Dataset::Ptr dataset_ = nullptr;
 };
 } // namespace robust_vslam
 

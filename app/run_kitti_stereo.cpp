@@ -1,25 +1,18 @@
-//
-// Created by gaoxiang on 19-5-4.
-//
-
-#include <gflags/gflags.h>
 #include "robust_vslam/System.h"
-
-DEFINE_string(config_file, "/home/lzb/Projects/robust_vslam/config/default.yaml", "config file path");
 
 int main(int argc, char **argv)
 {
-    google::ParseCommandLineFlags(&argc, &argv, true);
-
+    if (argc != 2)
+    {
+        std::cout << "Wrong input parameter!" << std::endl
+                  << "./xx yy/cc.yaml" << std::endl;
+    }
+    std::string config_file_path = argv[1];
     robust_vslam::System *vo(
-        new robust_vslam::System(FLAGS_config_file));
+        new robust_vslam::System(config_file_path));
 
     vo->Init_System();
     vo->Run();
-    //assert(vo->Init_System() == true);
-
-    //assert(vo->Init() == true);
-    //vo->Run();
 
     return 0;
 }

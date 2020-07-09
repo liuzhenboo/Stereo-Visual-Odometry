@@ -15,45 +15,37 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<Camera> Ptr;
 
-    double fx_ = 0, fy_ = 0, cx_ = 0, cy_ = 0,
-           baseline_ = 0; // Camera intrinsics
-    SE3 pose_;            // extrinsic, from stereo camera to single camera
-    SE3 pose_inv_;        // inverse of extrinsics
+    // Camera intrinsics
+    double fx_ = 0, fy_ = 0, cx_ = 0, cy_ = 0;
+    cv::Mat K_;
 
-    cv::Mat projMatr_; //camera param
-    //void SetprojMatrl();
+    // Camera extrinsic
+    double t_lr_ = 0;
+    cv::Mat R_lr_;
+    cv::Mat projMatr_;
+
     Camera();
 
-    Camera(double fx, double fy, double cx, double cy, double baseline,
-           const SE3 &pose)
-        : fx_(fx), fy_(fy), cx_(cx), cy_(cy), baseline_(baseline), pose_(pose)
+    Camera(const double &fx, const double &fy, const double &cx, const double &cy, const double &t_lr,
+           const cv::Mat &R_lr_)
+        : fx_(fx), fy_(fy), cx_(cx), cy_(cy), t_lr_(t_lr), R_lr_(R_lr)
     {
-        pose_inv_ = pose_.inverse();
-        projMatr_ = (cv::Mat_<float>(3, 4) << fx, 0., cx, -baseline * fx, 0., fy, cy, 0., 0, 0., 1., 0.);
-    }
-
-    SE3 pose() const { return pose_; }
-
-    // return intrinsic matrix
-    Mat33 K() const
-    {
-        Mat33 k;
-        k << fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1;
-        return k;
+        K_ = (cv::Mat_<float>(3, 3) << fx, 0., cx, 0., fy, cy, 0., 0., 1.);
+        projMatr_ = (cv::Mat_<float>(3, 4) << fx, 0., cx, -t_lr * fx, 0., fy, cy, 0., 0, 0., 1., 0.);
     }
 
     // coordinate transform: world, camera, pixel
-    Vec3 world2camera(const Vec3 &p_w, const SE3 &T_c_w);
+    cv::Mat world2camera(const cv::Mat &p_w, const cv::Mat &T_c_w);
 
-    Vec3 camera2world(const Vec3 &p_c, const SE3 &T_c_w);
+    cv::Mat camera2world(const cv::Mat &p_c, const cv::Mat &T_c_w);
 
-    Vec2 camera2pixel(const Vec3 &p_c);
+    cv::Mat camera2pixel(const cv::Mat &p_c);
 
-    Vec3 pixel2camera(const Vec2 &p_p, double depth = 1);
+    cv::Mat pixel2camera(const cv::Mat &p_p, double depth = 1);
 
-    Vec3 pixel2world(const Vec2 &p_p, const SE3 &T_c_w, double depth = 1);
+    cv::Mat pixel2world(const cv::Mat &p_p, const cv::Mat &T_c_w, double depth = 1);
 
-    Vec2 world2pixel(const Vec3 &p_w, const SE3 &T_c_w);
+    cv::Mat world2pixel(const cv::Mat &p_w, const cv::Mat &T_c_w);
 };
 
 } // namespace robust_vslam

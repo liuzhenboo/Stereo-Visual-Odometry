@@ -1,6 +1,4 @@
 %YAML:1.0
-
-
 # data
 dataset_dir_kitti: /media/lzb/Windows-SSD/ubuntu16/00
 
@@ -28,7 +26,6 @@ ros_data_IaE_dir: /
 #Extrinsics_x: 0.12
 #Extrinsics_y: 0.00
 #Extrinsics_z: 0.00
-
 
 # Kitti --------------------------------
 #camera_L intrinsics

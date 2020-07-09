@@ -7,7 +7,7 @@ Camera::Camera()
 {
 }
 
-Vec3 Camera::world2camera(const Vec3 &p_w, const SE3 &T_c_w)
+cv::Mat Camera::world2camera(const cv::Mat &p_w, const cv::Mat &T_c_w)
 {
     return pose_ * T_c_w * p_w;
 }
