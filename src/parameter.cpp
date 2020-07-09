@@ -1,3 +1,6 @@
+
+// created by liuzhenbo in 2020/7/9
+
 #include "robust_vslam/parameter.h"
 namespace robust_vslam
 {
@@ -44,18 +47,23 @@ Parameter::Parameter()
     num_features_tracking_bad_ = Config::Get<int>("num_features_tracking_bad");
     num_features_needed_for_keyframe_ = Config::Get<int>("num_features_needed_for_keyframe");
     init_landmarks_ = Config::Get<int>("init_landmarks");
-    feature_match_error_ = Config::Get<int>("feature_match_error");
+    feature_match_error_ = Config::Get<double>("feature_match_error");
     track_mode_ = Config::Get<std::string>("track_mode");
     num_features_tracking_ = Config::Get<int>("num_features_tracking");
     inlier_rate_ = Config::Get<double>("inlier_rate");
     iterationsCount_ = Config::Get<int>("iterationsCount");
     reprojectionError_ = Config::Get<float>("reprojectionError");
     confidence_ = Config::Get<float>("confidence");
-    orb_dir_ = Config::Get<std::string>("orb_dir");
     display_scale_ = Config::Get<int>("display_scale");
     display_x_ = Config::Get<int>("display_x");
     display_y_ = Config::Get<int>("display_y");
     maxmove_ = Config::Get<double>("maxmove");
     minmove_ = Config::Get<double>("minmove");
+    GFTTDetector_num_ = Config::Get<int>("num_features");
+    nFeatures_ = Config::Get<int>("nFeatures");
+    fScaleFactor_ = Config::Get<int>("fScaleFactor");
+    nLevels_ = Config::Get<int>("nLevels");
+    fIniThFAST_ = Config::Get<int>("fIniThFAST");
+    fMinThFAST_ = Config::Get<int>("fMinThFAST");
 }
 } // namespace robust_vslam

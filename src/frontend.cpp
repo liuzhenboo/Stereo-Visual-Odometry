@@ -1,3 +1,5 @@
+// created by liuzhenbo in 2020/7/9
+
 #include <opencv2/opencv.hpp>
 #include "robust_vslam/algorithm.h"
 #include "robust_vslam/backend.h"
@@ -13,40 +15,43 @@
 namespace robust_vslam
 {
 
-Frontend::Frontend()
+Frontend::Frontend(System *system, Parameter::Ptr parameter, Sensors::Ptr sensors)
 {
-    gftt_ =
-        cv::GFTTDetector::create(Config::Get<int>("num_features"), 0.01, 20);
 
-    cv::FileStorage fSettings(orb_dir_, cv::FileStorage::READ);
+    sensors_ = sensors;
+    system_ = system;
+    parameter_ = parameter_;
+    Readparameter();
+    //----------------------------------------------------------------------------------
+    gftt_ = cv::GFTTDetector::create(GFTTDetector_num_, 0.01, 20);
 
-    // 1:RGB 0:BGR
-    int nRGB = fSettings["Camera.RGB"];
-
-    if (nRGB)
-        std::cout << "- color order: RGB (ignored if grayscale)" << std::endl;
-    else
-        std::cout << "- color order: BGR (ignored if grayscale)" << std::endl;
-
-    // 每一帧提取的特征点数 1000
-    int nFeatures = fSettings["ORBextractor.nFeatures"];
-    // 图像建立金字塔时的变化尺度 1.2
-    float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
-    // 尺度金字塔的层数 8
-    int nLevels = fSettings["ORBextractor.nLevels"];
-    // 提取fast特征点的默认阈值 20
-    int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
-    // 如果默认阈值提取不出足够fast特征点，则使用最小阈值 8
-    int fMinThFAST = fSettings["ORBextractor.minThFAST"];
-    std::cout << std::endl
-              << "ORB Extractor Parameters: " << std::endl;
-    std::cout << "- Number of Features: " << nFeatures << std::endl;
-    std::cout << "- Scale Levels: " << nLevels << std::endl;
-    std::cout << "- Scale Factor: " << fScaleFactor << std::endl;
-    std::cout << "- Initial Fast Threshold: " << fIniThFAST << std::endl;
-    std::cout << "- Minimum Fast Threshold: " << fMinThFAST << std::endl;
-
-    mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+    mpORBextractorLeft_ = new ORBextractor(nFeatures_, fScaleFactor_, nLevels_, fIniThFAST_, fMinThFAST_);
+}
+void Frontend::Readparameter()
+{
+    num_features_init_ = parameter_->num_features_init_;
+    num_features_ = parameter_->num_features_;
+    num_features_tracking_bad_ = parameter_->num_features_tracking_bad_;
+    num_features_needed_for_keyframe_ = parameter_->num_features_needed_for_keyframe_;
+    init_landmarks_ = parameter_->init_landmarks_;
+    feature_match_error_ = parameter_->feature_match_error_;
+    track_mode_ = parameter_->track_mode_;
+    num_features_tracking_ = parameter_->num_features_tracking_;
+    inlier_rate_ = parameter_->inlier_rate_;
+    iterationsCount_ = parameter_->iterationsCount_;
+    reprojectionError_ = parameter_->reprojectionError_;
+    confidence_ = parameter_->confidence_;
+    display_scale_ = parameter_->display_scale_;
+    display_x_ = parameter_->display_x_;
+    display_y_ = parameter_->display_y_;
+    maxmove_ = parameter_->maxmove_;
+    minmove_ = parameter_->minmove_;
+    GFTTDetector_num_ = parameter_->GFTTDetector_num_;
+    nFeatures_ = parameter_->nFeatures_;
+    fScaleFactor_ = parameter_->fScaleFactor_;
+    nLevels_ = parameter_->nLevels_;
+    fIniThFAST_ = parameter_->fIniThFAST_;
+    fMinThFAST_ = parameter_->fMinThFAST_;
 }
 // 向系统输入新的图片数据
 bool Frontend::AddFrame(robust_vslam::Frame::Ptr frame)
@@ -178,7 +183,7 @@ bool Frontend::Track()
         return ORB_StereoF2F_PnP_Track();
     }
 }
-bool Frontend::triangulation_opencv(
+bool Frontend::OpenCV_Triangulation(
     const std::vector<cv::Point2f> &p_1,
     const std::vector<cv::Point2f> &p_2,
     const cv::Mat &t,
@@ -247,7 +252,7 @@ bool Frontend::ORB_StereoF2F_PnP_Track()
     cv::Mat rotation = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat translation = cv::Mat::zeros(3, 1, CV_64F);
     cv::Mat delta_translation = cv::Mat::zeros(3, 1, CV_64F);
-    bool valid_pose = slambook_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
+    bool valid_pose = G2O_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
     if (!valid_pose)
         return false;
     std::cout << "f2f rotation:" << std::endl
@@ -333,7 +338,7 @@ bool Frontend::LK_StereoF2F_PnP_Track()
     cv::Mat rotation = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat translation = cv::Mat::zeros(3, 1, CV_64F);
     cv::Mat delta_translation = cv::Mat::zeros(3, 1, CV_64F);
-    bool enough_inlier = opencv_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
+    bool enough_inlier = OpenCV_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t0, rotation, translation);
     if (!enough_inlier)
     {
         return false;
@@ -412,11 +417,11 @@ void Frontend::displayTracking(cv::Mat &imageLeft_t1,
     cv::imshow("robust_vslam ", vis);
 }
 
-bool Frontend::slambook_EstimatePose_PnP(cv::Mat &projMatrl,
-                                         std::vector<cv::Point2f> &pointsLeft_t2,
-                                         cv::Mat &points3D_t0,
-                                         cv::Mat &rotation,
-                                         cv::Mat &translation)
+bool Frontend::G2O_EstimatePose_PnP(cv::Mat &projMatrl,
+                                    std::vector<cv::Point2f> &pointsLeft_t2,
+                                    cv::Mat &points3D_t0,
+                                    cv::Mat &rotation,
+                                    cv::Mat &translation)
 {
 
     // ------------------------------------------------
@@ -492,7 +497,7 @@ cv::Vec3f Frontend::rotationMatrixToEulerAngles(cv::Mat &R)
     }
     return cv::Vec3f(x, y, z);
 }
-bool Frontend::opencv_EstimatePose_PnP(cv::Mat &projMatrl,
+bool Frontend::OpenCV_EstimatePose_PnP(cv::Mat &projMatrl,
                                        std::vector<cv::Point2f> &pointsLeft_t2,
                                        cv::Mat &points3D_t0,
                                        cv::Mat &rotation,

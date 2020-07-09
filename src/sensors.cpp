@@ -1,3 +1,5 @@
+// created by liuzhenbo in 2020/7/9
+
 #include "robust_vslam/sensors.h"
 
 namespace robust_vslam
@@ -5,6 +7,7 @@ namespace robust_vslam
 
 Sensors::Sensors(Parameter::Ptr parameter)
 {
+
     fx1_ = parameter->fx1_;
     fy1_ = parameter->fy1_;
     cx1_ = parameter->cx1_;

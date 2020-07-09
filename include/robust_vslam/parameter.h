@@ -1,12 +1,10 @@
+// created by liuzhenbo in 2020/7/9
+
 #include "robust_vslam/common_include.h"
 #include "robust_vslam/config.h"
 #include "robust_vslam/sensors.h"
 namespace robust_vslam
 {
-//double R_rl0_, R_rl1_, R_rl2_, R_rl3_, R_rl4_, R_rl5_, R_rl6_, R_rl7_, R_rl8_;
-//double t_rl0_, t_rl1_, t_rl2_;
-//double R_lm0_, R_lm1_, R_lm2_, R_lm3_, R_lm4_, R_lm5_, R_lm6_, R_lm7_, R_lm8_;
-//double t_lm0_, t_lm1_, t_lm2_;
 
 class Parameter
 {
@@ -24,6 +22,29 @@ public:
     cv::Mat R_lm_ = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat t_lm_ = cv::Mat::zeros(3, 1, CV_64F);
 
-    //
+    //Frontend
+    int num_features_init_;
+    int num_features_;
+    int num_features_tracking_bad_;
+    int num_features_needed_for_keyframe_;
+    int init_landmarks_;
+    double feature_match_error_;
+    std::string track_mode_;
+    int num_features_tracking_;
+    double inlier_rate_;
+    int iterationsCount_;
+    float reprojectionError_;
+    float confidence_;
+    int display_scale_;
+    int display_x_;
+    int display_y_;
+    double maxmove_;
+    double minmove_;
+    int GFTTDetector_num_;
+    int nFeatures_;
+    int fScaleFactor_;
+    int nLevels_;
+    int fIniThFAST_;
+    int fMinThFAST_;
 };
 } // namespace robust_vslam
