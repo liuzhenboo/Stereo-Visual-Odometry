@@ -7,34 +7,29 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <opencv2/core/core.hpp>
-#include <gflags/gflags.h>
 #include "robust_vslam/System.h"
 #include "robust_vslam/frame.h"
 using namespace std;
-DEFINE_string(config_file, "/home/lzb/Projects/robust_vslam/config/default.yaml", "config file path");
-//void Get_stereo_data(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
 class ImageGrabber
 {
 public:
-    ImageGrabber(robust_vslam::System *pSLAM) : mp_vo(pSLAM) {}
+    ImageGrabber(robust_vslam::System *pSLAM) : mp_slam(pSLAM) {}
 
     void Get_stereo_data(const sensor_msgs::ImageConstPtr &msgLeft, const sensor_msgs::ImageConstPtr &msgRight);
 
-    robust_vslam::System *mp_vo;
+    robust_vslam::System *mp_slam;
 };
 
 int main(int argc, char **argv)
 {
-    google::ParseCommandLineFlags(&argc, &argv, true);
     ros::init(argc, argv, "ros_stereo");
     ros::start();
-    // 初始化slam系统，传入config文件地址
-    robust_vslam::System *vo(
-        new robust_vslam::System(FLAGS_config_file));
-    vo->Init_System();
-    //assert(vo->Init_System() == true);
+    std::string config_file_path = argv[1];
 
-    ImageGrabber igb(vo);
+    // 初始化slam系统，传入config文件地址
+    robust_vslam::System *slam(
+        new robust_vslam::System(config_file_path));
+    ImageGrabber igb(slam);
 
     ros::NodeHandle nh;
 
@@ -87,19 +82,14 @@ void ImageGrabber::Get_stereo_data(const sensor_msgs::ImageConstPtr &msgLeft, co
         return;
     }
 
-    cv::Mat image_left_resized, image_right_resized;
-    cv::resize(image_left, image_left_resized, cv::Size(), 0.6, 0.6,
-               cv::INTER_NEAREST);
-    cv::resize(image_right, image_right_resized, cv::Size(), 0.6, 0.6,
-               cv::INTER_NEAREST);
+    // cv::Mat image_left_resized, image_right_resized;
+    // cv::resize(image_left, image_left_resized, cv::Size(), 0.6, 0.6,
+    //            cv::INTER_NEAREST);
+    // cv::resize(image_right, image_right_resized, cv::Size(), 0.6, 0.6,
+    //            cv::INTER_NEAREST);
 
-    robust_vslam::Frame::Ptr new_frame1 = robust_vslam::Frame::CreateFrame(); //robust_vslam::Frame::CreateFrame();
-    new_frame1->left_img_ = image_left;
-    new_frame1->right_img_ = image_right;
-
-    if (!(mp_vo->Step_ros(new_frame1)))
-    {
-        std::cout << "return" << std::endl;
-        return;
-    }
+    robust_vslam::Frame::Ptr new_frame = robust_vslam::Frame::CreateFrame(); //robust_vslam::Frame::CreateFrame();
+    new_frame->left_img_ = image_left;
+    new_frame->right_img_ = image_right;
+    mp_slam->Step_ros(new_frame);
 }

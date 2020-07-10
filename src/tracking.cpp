@@ -77,41 +77,22 @@ bool Tracking::AddFrame(robust_vslam::Frame::Ptr frame)
 }
 bool Tracking::StereoInit_f2f()
 {
-    int num_features_left = DetectFeatures();
-    // 设置初始位姿
-    Vec3 t;
-    t << 0.0, 0.0, 0.0;
-    current_frame_->SetPose(SE3(SO3(), t));
-    std::cout << "初始位置：" << t << std::endl;
+    if (track_mode_ == "ORB_stereof2f_pnp")
+    {
+        Detect_MyORBFeatures();
+    }
+    else
+    {
+        Detect_OpenCVFASTFeatures();
+    }
 
     last_frame_ = current_frame_;
     status_ = TrackingStatus::TRACKING_GOOD;
     return true;
 }
 
-int Tracking::DetectFeatures()
+int Tracking::Detect_OpenCVFASTFeatures()
 {
-    /*cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
-    for (auto &feat : current_frame_->features_left_)
-    {
-        cv::rectangle(mask, feat->position_.pt - cv::Point2f(10, 10),
-                      feat->position_.pt + cv::Point2f(10, 10), 0, CV_FILLED);
-    }
-
-    std::vector<cv::KeyPoint> keypoints;
-    gftt_->detect(current_frame_->left_img_, keypoints, mask);
-
-    int cnt_detected = 0;
-    for (auto &kp : keypoints)
-    {
-        current_frame_->features_left_.push_back(
-            Feature::Ptr(new Feature(current_frame_, kp)));
-        cnt_detected++;
-    }
-
-    LOG(INFO) << "Detect " << cnt_detected << " new features";
-    return cnt_detected;*/
-    //------------------------------------------------------------------fast feature
     int cnt_detected = 0;
 
     std::vector<cv::KeyPoint> keypoints;
@@ -127,7 +108,7 @@ int Tracking::DetectFeatures()
         cnt_detected++;
     }
 
-    LOG(INFO) << "Detect " << cnt_detected << " fast features";
+    LOG(INFO) << "left image detect " << cnt_detected << " fast features";
     return cnt_detected;
 }
 
@@ -143,6 +124,7 @@ bool Tracking::Track()
         std::cout << "跟踪模式为：ORB_stereof2f_pnp" << std::endl;
         return ORB_StereoF2F_PnP_Track();
     }
+    return false;
 }
 bool Tracking::OpenCV_Triangulation(
     const std::vector<cv::Point2f> &p_1,
@@ -185,7 +167,7 @@ bool Tracking::OpenCV_Triangulation(
 }
 bool Tracking::ORB_StereoF2F_PnP_Track()
 {
-    int num_features_left = DetectFeatures();
+    Detect_MyORBFeatures();
 
     // 光流跟踪前后帧
     std::vector<cv::Point2f> matched_t1_left; // 光流跟踪到的像素点
@@ -199,6 +181,8 @@ bool Tracking::ORB_StereoF2F_PnP_Track()
         std::cout << "前后帧跟踪orb点少，忽略此次估计值！" << std::endl;
         return false;
     }
+    // for (size_t i = 0; i < matched_t1_left.size(); i++)
+    //     std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << "---" << matched_t2_left[i].x << ", " << matched_t2_left[i].y << std::endl;
     cv::Mat points3D_t1, points4D_t1;
     cv::Mat projMatrl = sensors_->projMatr1_;
     cv::Mat projMatrr = sensors_->projMatr2_;
@@ -213,7 +197,7 @@ bool Tracking::ORB_StereoF2F_PnP_Track()
     cv::Mat rotation = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat translation = cv::Mat::zeros(3, 1, CV_64F);
     cv::Mat delta_translation = cv::Mat::zeros(3, 1, CV_64F);
-    bool valid_pose = G2O_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t1, rotation, translation);
+    bool valid_pose = OpenCV_EstimatePose_PnP(projMatrl, matched_t2_left, points3D_t1, rotation, translation);
     if (!valid_pose)
         return false;
     std::cout << "f2f rotation:" << std::endl
@@ -221,11 +205,10 @@ bool Tracking::ORB_StereoF2F_PnP_Track()
     std::cout << "f2f translation:" << std::endl
               << translation << std::endl;
 
-    //显示轨迹
-    displayTracking(current_frame_->left_img_, matched_t1_left, matched_t2_left);
-
     // 5cm,100cm，保证帧之间的运动合适
     cv::Vec3f rotation_euler = rotationMatrixToEulerAngles(rotation);
+    cv::Mat rigid_body_transformation;
+
     if (abs(rotation_euler[1]) < 0.1 && abs(rotation_euler[0]) < 0.1 && abs(rotation_euler[2]) < 0.1)
     {
         double pose_norm2 = (std::pow(translation.at<double>(0), 2) + std::pow(translation.at<double>(1), 2) + std::pow(translation.at<double>(2), 2));
@@ -233,7 +216,6 @@ bool Tracking::ORB_StereoF2F_PnP_Track()
         {
             cv::Mat addup = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
-            cv::Mat rigid_body_transformation;
             cv::hconcat(rotation, translation, rigid_body_transformation);
             cv::vconcat(rigid_body_transformation, addup, rigid_body_transformation);
             rigid_body_transformation = rigid_body_transformation.inv();
@@ -249,20 +231,33 @@ bool Tracking::ORB_StereoF2F_PnP_Track()
 
         return false;
     }
+
+    displayTracking(current_frame_->left_img_, matched_t1_left, matched_t2_left);
+
+    std::cout << "F2F Transform:" << std::endl
+              << rigid_body_transformation << std::endl;
+    std::cout << "Global Transform:" << std::endl
+              << frame_pose_ << std::endl;
+
     cv::Mat xyz = frame_pose_.col(3).clone();
     Px_ = xyz.at<double>(0);
     Pz_ = xyz.at<double>(2);
     Py_ = xyz.at<double>(1);
 
-    std::cout << "global translation:" << std::endl
-              << Px_ << ", " << Py_ << ", " << Pz_ << std::endl;
-    //displayTracking(trajectory_, Px_, Pz_);
+    display(trajectory_, Px_, Pz_);
     return true;
 }
-
+// 2020/7/10 liuzhenbo
+// algorithm step:
+// (1) detect current image feature
+// (2) last and current feature match(data association)
+// (3) create temp 3D mappoint
+// (4) 3D -> 2D  estimation
+// (5) show
+// same to ORB_StereoF2F_PnP_Track()
 bool Tracking::LK_StereoF2F_PnP_Track()
 {
-    int num_features_left = DetectFeatures();
+    int num_features_left = Detect_OpenCVFASTFeatures();
     if (num_features_left < 30)
     {
         std::cout << "提取特征点较少！重新跟踪！" << std::endl;
@@ -286,6 +281,10 @@ bool Tracking::LK_StereoF2F_PnP_Track()
     {
         std::cout << "帧间跟踪了" << num_f2f_trackedfeatures << "个点" << std::endl;
     }
+    // for (size_t i = 0; i < matched_t1_left.size(); i++)
+    // {
+    //     std::cout << matched_t1_left[i].x << ", " << matched_t1_left[i].y << "---" << matched_t1_right[i].x << ", " << matched_t1_right[i].y << std::endl;
+    // }
     cv::Mat points3D_t1, points4D_t1;
     cv::Mat projMatrl = sensors_->projMatr1_;
     cv::Mat projMatrr = sensors_->projMatr2_;
@@ -348,7 +347,7 @@ void Tracking::display(cv::Mat &trajectory, double p1, double p2)
     // draw estimated trajectory
     int x = (int)(p1 * display_scale_) + display_x_;
     int y = (int)(p2 * display_scale_) + display_y_;
-    circle(trajectory, cv::Point(x, y), 1, CV_RGB(255, 0, 0), 2);
+    circle(trajectory, cv::Point(x, y), 1, CV_RGB(0, 0, 255), 2);
     cv::imshow("Trajectory", trajectory);
     cv::waitKey(1);
 }
@@ -364,17 +363,17 @@ void Tracking::displayTracking(cv::Mat &imageLeft_t1,
 
     cv::cvtColor(imageLeft_t1, vis, cv::COLOR_GRAY2BGR, 3);
 
-    for (int i = 0; i < pointsLeft_t0.size(); i++)
+    for (size_t i = 0; i < pointsLeft_t0.size(); i++)
     {
         cv::circle(vis, cv::Point(pointsLeft_t0[i].x, pointsLeft_t0[i].y), radius, CV_RGB(0, 255, 0));
     }
 
-    for (int i = 0; i < pointsLeft_t1.size(); i++)
+    for (size_t i = 0; i < pointsLeft_t1.size(); i++)
     {
         cv::circle(vis, cv::Point(pointsLeft_t1[i].x, pointsLeft_t1[i].y), radius, CV_RGB(255, 0, 0));
     }
 
-    for (int i = 0; i < pointsLeft_t1.size(); i++)
+    for (size_t i = 0; i < pointsLeft_t1.size(); i++)
     {
         cv::line(vis, pointsLeft_t0[i], pointsLeft_t1[i], CV_RGB(0, 255, 0));
     }
@@ -482,7 +481,6 @@ bool Tracking::OpenCV_EstimatePose_PnP(cv::Mat &projMatrl,
     float confidence = confidence_;               // RANSAC successful confidence.
     bool useExtrinsicGuess = true;
     int flags = cv::SOLVEPNP_ITERATIVE;
-    std::cout << pointsLeft_t2.size() << ",  " << points3D_t1.rows << std::endl;
     cv::Mat inliers;
     cv::solvePnPRansac(points3D_t1, pointsLeft_t2, intrinsic_matrix, distCoeffs, rvec, translation,
                        useExtrinsicGuess, iterationsCount, reprojectionError, confidence,
@@ -501,29 +499,54 @@ bool Tracking::OpenCV_EstimatePose_PnP(cv::Mat &projMatrl,
         return true;
     }
 }
+int Tracking::Detect_MyORBFeatures()
+{
+
+    std::vector<cv::KeyPoint> mvKeys1, mvKeys2;
+    cv::Mat mDescriptors1, mDescriptors2;
+
+    (*mpORBextractorLeft_)(current_frame_->left_img_, cv::Mat(), mvKeys1, mDescriptors1);
+    (*mpORBextractorLeft_)(current_frame_->right_img_, cv::Mat(), mvKeys2, mDescriptors2);
+
+    current_frame_->left_Descriptors_ = mDescriptors1;
+    current_frame_->right_Descriptors_ = mDescriptors2;
+
+    int cnt_detected1 = 0, cnt_detected2 = 0;
+    for (auto &kp : mvKeys1)
+    {
+        current_frame_->features_left_.push_back(
+            Feature::Ptr(new Feature(current_frame_, kp)));
+        cnt_detected1++;
+    }
+    for (auto &kp : mvKeys2)
+    {
+        current_frame_->features_right_.push_back(
+            Feature::Ptr(new Feature(current_frame_, kp)));
+        cnt_detected2++;
+    }
+
+    LOG(INFO) << "left image detect " << cnt_detected1 << " orb features" << std::endl;
+    LOG(INFO) << "right image detect " << cnt_detected2 << " orb features" << std::endl;
+
+    return std::min(cnt_detected1, cnt_detected2);
+}
 
 int Tracking::ORB_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> &points_t2_left,
                                                         std::vector<cv::Point2f> &points_t1_left,
                                                         std::vector<cv::Point2f> &points_t1_right)
 {
-    // 当前帧图像中提取的特征点集合
-    std::vector<cv::KeyPoint> mvKeys1, mvKeys2, mvKeys3;
-    // 特征点对应的描述子
 
-    cv::Mat mDescriptors1, mDescriptors2, mDescriptors3;
-    (*mpORBextractorLeft_)(last_frame_->left_img_, cv::Mat(), mvKeys1, mDescriptors1);
-    (*mpORBextractorLeft_)(last_frame_->right_img_, cv::Mat(), mvKeys2, mDescriptors2);
-    (*mpORBextractorLeft_)(current_frame_->left_img_, cv::Mat(), mvKeys3, mDescriptors3);
     cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
-
-    //-- 第三步:对两幅图像中的BRIEF描述子进行匹配，使用 Hamming 距离
+    //对两幅图像中的BRIEF描述子进行匹配，使用 Hamming 距离
     std::vector<cv::DMatch> match1, match2;
     // BFMatcher matcher ( NORM_HAMMING );
-    matcher->match(mDescriptors1, mDescriptors2, match1);
-    matcher->match(mDescriptors1, mDescriptors3, match2);
-    int des_index = std::min(std::min(mDescriptors2.rows, mDescriptors3.rows), mDescriptors1.rows);
-    double min_dist = 10000,
-           max_dist = 0;
+    matcher->match(last_frame_->left_Descriptors_, last_frame_->right_Descriptors_, match1);
+    matcher->match(last_frame_->left_Descriptors_, current_frame_->left_Descriptors_, match2);
+
+    int des_index = std::min(std::min(last_frame_->left_Descriptors_.rows, last_frame_->right_Descriptors_.rows), current_frame_->left_Descriptors_.rows);
+
+    // 剔除匹配错误或较差的点
+    double min_dist = 10000, max_dist = 0;
 
     for (int i = 0; i < des_index; i++)
     {
@@ -537,14 +560,16 @@ int Tracking::ORB_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f>
     printf("-- Max dist : %f \n", max_dist);
     printf("-- Min dist : %f \n", min_dist);
 
-    //当描述子之间的距离大于两倍的最小距离时,即认为匹配有误.但有时候最小距离会非常小,设置一个经验值30作为下限.
+    //当描述子之间的距离大于两倍的最小距离时,即认为匹配有误. 但有时候最小距离会非常小,设置一个经验值30作为下限.
     for (int i = 0; i < des_index; i++)
     {
-        if ((match1[i].distance <= std::max(2 * min_dist, 30.0)) && (match2[i].distance <= std::max(2 * min_dist, 30.0)) && (std::abs((mvKeys1[match1[i].queryIdx].pt.y) - (mvKeys2[match1[i].trainIdx].pt.y)) < feature_match_error_))
+        if ((match1[i].distance <= std::max(2 * min_dist, 30.0)) &&
+            (match2[i].distance <= std::max(2 * min_dist, 30.0)) &&
+            (std::abs((last_frame_->features_left_[match1[i].queryIdx]->position_.pt.y) - (last_frame_->features_right_[match1[i].trainIdx]->position_.pt.y)) < feature_match_error_))
         {
-            cv::Point2f t1_l = mvKeys1[match1[i].queryIdx].pt;
-            cv::Point2f t1_r = mvKeys2[match1[i].trainIdx].pt;
-            cv::Point2f t2_l = mvKeys3[match2[i].trainIdx].pt;
+            cv::Point2f t1_l = (last_frame_->features_left_)[match1[i].queryIdx]->position_.pt;
+            cv::Point2f t1_r = (last_frame_->features_right_)[match1[i].trainIdx]->position_.pt;
+            cv::Point2f t2_l = (current_frame_->features_left_)[match2[i].trainIdx]->position_.pt;
             points_t2_left.push_back(t2_l);
             points_t1_left.push_back(t1_l);
             points_t1_right.push_back(t1_r);
@@ -591,19 +616,19 @@ int Tracking::LK_Robust_Find_MuliImage_MatchedFeatures(std::vector<cv::Point2f> 
         cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
                          0.01),
         0, 0.001);
-    deleteUnmatchFeaturesCircle(points_t1_left, points_t1_right, points_t2_right, points_t2_left, points_final,
-                                status1, status2, status3, status4);
+    deleteBadmatchFeatures(points_t1_left, points_t1_right, points_t2_right, points_t2_left, points_final,
+                           status1, status2, status3, status4);
     return points_t1_left.size();
 }
-void Tracking::deleteUnmatchFeaturesCircle(std::vector<cv::Point2f> &points0, std::vector<cv::Point2f> &points1,
-                                           std::vector<cv::Point2f> &points2, std::vector<cv::Point2f> &points3,
-                                           std::vector<cv::Point2f> &points0_return,
-                                           std::vector<uchar> &status0, std::vector<uchar> &status1,
-                                           std::vector<uchar> &status2, std::vector<uchar> &status3)
+void Tracking::deleteBadmatchFeatures(std::vector<cv::Point2f> &points0, std::vector<cv::Point2f> &points1,
+                                      std::vector<cv::Point2f> &points2, std::vector<cv::Point2f> &points3,
+                                      std::vector<cv::Point2f> &points0_return,
+                                      std::vector<uchar> &status0, std::vector<uchar> &status1,
+                                      std::vector<uchar> &status2, std::vector<uchar> &status3)
 {
     //getting rid of points for which the KLT tracking failed or those who have gone outside the frame
     int indexCorrection = 0;
-    for (int i = 0; i < status3.size(); i++)
+    for (size_t i = 0; i < status3.size(); i++)
     {
         cv::Point2f pt0 = points0.at(i - indexCorrection);
         cv::Point2f pt1 = points1.at(i - indexCorrection);
@@ -611,15 +636,18 @@ void Tracking::deleteUnmatchFeaturesCircle(std::vector<cv::Point2f> &points0, st
         cv::Point2f pt3 = points3.at(i - indexCorrection);
         cv::Point2f pt0_r = points0_return.at(i - indexCorrection);
 
-        if ((status3.at(i) == 0) || (pt3.x < 0) || (pt3.y < 0) ||
-            (status2.at(i) == 0) || (pt2.x < 0) || (pt2.y < 0) ||
-            (status1.at(i) == 0) || (pt1.x < 0) || (pt1.y < 0) ||
-            (status0.at(i) == 0) || (pt0.x < 0) || (pt0.y < 0))
+        bool outsideframe = ((pt3.x < 0) || (pt3.y < 0) ||
+                             (pt2.x < 0) || (pt2.y < 0) ||
+                             (pt1.x < 0) || (pt1.y < 0) ||
+                             (pt0.x < 0) || (pt0.y < 0) ||
+                             (pt0_r.x < 0) || (pt0_r.y < 0));
+        bool badstatus = ((status2.at(i) == 0) || (status1.at(i) == 0) ||
+                          (status0.at(i) == 0) || (status3.at(i) == 0));
+
+        bool NoStereoEpipolarConstrain = ((std::abs(pt0.y - pt1.y) > feature_match_error_) ||
+                                          (std::abs(pt2.y - pt3.y) > feature_match_error_));
+        if (outsideframe || badstatus || NoStereoEpipolarConstrain)
         {
-            if ((pt0.x < 0) || (pt0.y < 0) || (pt1.x < 0) || (pt1.y < 0) || (pt2.x < 0) || (pt2.y < 0) || (pt3.x < 0) || (pt3.y < 0))
-            {
-                status3.at(i) = 0;
-            }
             points0.erase(points0.begin() + (i - indexCorrection));
             points1.erase(points1.begin() + (i - indexCorrection));
             points2.erase(points2.begin() + (i - indexCorrection));

@@ -57,7 +57,7 @@ Parameter::Parameter()
     iterationsCount_ = Config::Get<int>("iterationsCount");
     reprojectionError_ = Config::Get<float>("reprojectionError");
     confidence_ = Config::Get<float>("confidence");
-    display_scale_ = Config::Get<int>("display_scale");
+    display_scale_ = Config::Get<double>("display_scale");
     display_x_ = Config::Get<int>("display_x");
     display_y_ = Config::Get<int>("display_y");
     maxmove_ = Config::Get<double>("maxmove");

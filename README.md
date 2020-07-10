@@ -1,22 +1,48 @@
 ## robust_vslam 
-Tips:The basic code framework from robust_vslam comes from [slambook2](https://github.com/gaoxiang12/slambook2)
 
-## 存在问题
+This is a simple frame to frame visual odometry.
 
-- kitti数据集下，定位还不错。但是在楼下的实验室环境，定位结果却不理想。
+- kitti demo
 
-- 大范围，纹理变化较为明显的环境还不错；纹理变化不明显，小范围的室内定位却不行。
+build step:
+```
+cd robust-vslam
+mkdir build
+cd build
+cmake ..
+make -j2
+```
+run:
 
-- 下一版本要实现楼下室内实验室的视觉定位
+```
+./run_kitti_stereo ../config/default.yaml
+```
+- ROS 
 
-## 可能的改进点
+build step:
+```
+cd robust-vslam/app/ros/robust-vslam
+mkdir build
+cd build
+cmake ..
+make -j2
+source devel/setup.bash
+export ROS_PACKAGE_PATH=${ROS_PACKAGE_PATH}:/home/lzb/Projects/robust-vslam/app/ros/robust-vslam
+```
+run:
 
-- 特征点提取要均匀，识别性较好。
-- 特征匹配要尽可能多地排除误匹配，要多加约束。特别是对于纹理单一的环境，比如标定板，必须要加入一个几何约束。
-- 三角化时候，大深度出现的问题。
-- 跟踪的综合设计
+```
+cd robust-vslam/app/ros/robust-vslam
+./robust_vslam_ros ../../../config/default.yaml
+rosbag play xxx.bag
+```
 
-## 开发日志
+FAST Feature detector and LK matching:
 
-- 7/9 调整代码结构，形成初级版本
+![1](./picture/fastLK.png)
+
+
+orb Feature detector and opencv matching:
+
+![1](./picture/orb.png)
 

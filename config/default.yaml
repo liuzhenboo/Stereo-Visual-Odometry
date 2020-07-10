@@ -11,16 +11,16 @@ ros_data_IaE_dir: /
 
 # ZED
 # camera_L intrinsics
-#camera_l.fx: 699.715
-#camera_l.fy: 699.715
-#camera_l.cx: 648.854
-#camera_l.cy: 350.34
+# camera_l.fx: 699.715
+# camera_l.fy: 699.715
+# camera_l.cx: 648.854
+# camera_l.cy: 350.34
 
 # camera_R intrinsics
-#camera_r.fx: 699.39
-#camera_r.fy: 699.39
-#camera_r.cx: 645.379
-#camera_r.cy: 365.323
+# camera_r.fx: 699.39
+# camera_r.fy: 699.39
+# camera_r.cx: 645.379
+# camera_r.cy: 365.323
 
 # Extrinsics (t)
 #Extrinsics_x: 0.12
@@ -41,7 +41,7 @@ camera_r.fy: 718.856
 camera_r.cx: 607.193
 camera_r.cy: 185.216
 
-# t_rl_
+# t_rl_0.537
 t_lr0: -0.537
 t_lr1: 0.00
 t_lr2: 0.00
@@ -63,7 +63,7 @@ num_features: 500
 # init
 num_features_init: 20
 init_landmarks: 5
-feature_match_error: 40
+feature_match_error: 3
 
 # tracking
 num_features_tracking: 5
@@ -71,8 +71,8 @@ num_features_tracking_bad: 10
 num_features_needed_for_keyframe: 60
 
 
-#mode LK_stereof2f_pnp, ORB_stereof2f_pnp
-track_mode: LK_stereof2f_pnp
+#you can choose LK_stereof2f_pnp, ORB_stereof2f_pnp
+track_mode: ORB_stereof2f_pnp
 
 inlier_rate: 0.01
 
@@ -82,8 +82,8 @@ reprojectionError: 0.5
 confidence: 0.99
 
 display_scale: 1
-display_x: 300
-display_y: 100
+display_x: 400
+display_y: 200
 minmove: 0.05
 maxmove: 10
 fMinThFAST: 7

@@ -10,7 +10,7 @@ System::System(std::string &config_path)
     : config_file_path_(config_path)
 {
     std::cout << std::endl
-              << "robust-vslam, 2020-2021 liuzhenbo , NWPU" << std::endl
+              << "robust-vslam, 2020-2021 LiuZhenbo，ChengChangwei , NWPU" << std::endl
               << std::endl;
     if (Config::SetParameterFile(config_file_path_) == false)
     {

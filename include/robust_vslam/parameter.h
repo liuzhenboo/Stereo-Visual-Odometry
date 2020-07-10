@@ -40,7 +40,7 @@ public:
     int iterationsCount_;
     float reprojectionError_;
     float confidence_;
-    int display_scale_;
+    double display_scale_;
     int display_x_;
     int display_y_;
     double maxmove_;
