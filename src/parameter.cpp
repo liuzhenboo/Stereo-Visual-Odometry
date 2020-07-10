@@ -19,10 +19,13 @@ Parameter::Parameter()
     K1_.at<double>(0, 2) = cx1_;
     K1_.at<double>(1, 1) = fy1_;
     K1_.at<double>(1, 2) = cy1_;
+    K1_.at<double>(2, 2) = 1.0;
+
     K2_.at<double>(0, 0) = fx2_;
     K2_.at<double>(0, 2) = cx2_;
     K2_.at<double>(1, 1) = fy2_;
     K2_.at<double>(1, 2) = cy2_;
+    K2_.at<double>(2, 2) = 1.0;
 
     t_rl_.at<double>(0, 0) = Config::Get<double>("t_lr0");
     t_rl_.at<double>(1, 0) = Config::Get<double>("t_lr1");
@@ -36,10 +39,10 @@ Parameter::Parameter()
     R_rl_.at<double>(2, 0) = Config::Get<double>("R_lr6");
     R_rl_.at<double>(2, 1) = Config::Get<double>("R_lr7");
     R_rl_.at<double>(2, 2) = Config::Get<double>("R_lr8");
-    cv::Mat R_ll = cv::Mat::eye(3, 3 CV_64F);
+    cv::Mat R_ll = cv::Mat::eye(3, 3, CV_64F);
     cv::Mat t_ll = cv::Mat::zeros(3, 1, CV_64F);
     cv::hconcat(K1_ * R_ll, K1_ * t_ll, projMatr1_);
-    cv::hconcat(K2_ * R_rl_, K2_ * t_rl, projMatr2_);
+    cv::hconcat(K2_ * R_rl_, K2_ * t_rl_, projMatr2_);
 
     //Tracking
     num_features_init_ = Config::Get<int>("num_features_init");
@@ -61,9 +64,10 @@ Parameter::Parameter()
     minmove_ = Config::Get<double>("minmove");
     GFTTDetector_num_ = Config::Get<int>("num_features");
     nFeatures_ = Config::Get<int>("nFeatures");
-    fScaleFactor_ = Config::Get<int>("fScaleFactor");
+    fScaleFactor_ = Config::Get<float>("fScaleFactor");
     nLevels_ = Config::Get<int>("nLevels");
     fIniThFAST_ = Config::Get<int>("fIniThFAST");
     fMinThFAST_ = Config::Get<int>("fMinThFAST");
+    dataset_path_ = Config::Get<std::string>("dataset_path");
 }
 } // namespace robust_vslam

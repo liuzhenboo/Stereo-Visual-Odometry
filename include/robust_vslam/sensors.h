@@ -3,18 +3,19 @@
 
 #ifndef robust_vslam_SENSORS_H
 #define robust_vslam_SENSORS_H
-
+#include "robust_vslam/parameter.h"
 #include "robust_vslam/common_include.h"
 
 namespace robust_vslam
 {
+//class Parameter;
 // Sensor platform
 class Sensors
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<Sensors> Ptr;
-
+    Sensors(Parameter::Ptr parameter);
     //---------------------------------------------
     // stereo camera
     //---------------------------------------------
@@ -43,7 +44,6 @@ public:
     // Lidar
     //---------------------------------------------
     // ToDo
-    Sensors();
 
     // coordinate transform: world, camera, pixel
     cv::Mat world2camera(const cv::Mat &p_w, const cv::Mat &T_c_w);

@@ -7,18 +7,22 @@
 #include <opencv2/features2d.hpp>
 #include "robust_vslam/ORBextractor.h"
 
+#include "robust_vslam/parameter.h"
+#include "robust_vslam/sensors.h"
 #include "robust_vslam/algorithm.h"
 #include "robust_vslam/frame.h"
+//#include "robust_vslam/System.h"
+#include "robust_vslam/feature.h"
 
 namespace robust_vslam
 {
 class System;
-
+class Sensors;
+class Parameter;
 enum class TrackingStatus
 {
   INITING,
   TRACKING_GOOD,
-  TRACKING_BAD,
   LOST
 };
 
@@ -29,18 +33,18 @@ public:
   typedef std::shared_ptr<Tracking> Ptr;
 
   //接口函数
-  Tracking();
+  Tracking(System *system, Parameter::Ptr parameter, Sensors::Ptr sensors);
   void Set_vo(System *vo);
   bool AddFrame(Frame::Ptr frame);
-
-private:
   TrackingStatus GetStatus() const { return status_; }
 
+private:
   bool StereoInit_f2f();
 
   bool Track();
 
   bool Reset();
+  void Readparameter();
 
   bool LK_StereoF2F_PnP_Track();
   bool ORB_StereoF2F_PnP_Track();
@@ -90,6 +94,8 @@ private:
   void displayTracking(cv::Mat &imageLeft_t1,
                        std::vector<cv::Point2f> &pointsLeft_t0,
                        std::vector<cv::Point2f> &pointsLeft_t1);
+  void display(cv::Mat &trajectory, double p1, double p2);
+
   cv::Vec3f rotationMatrixToEulerAngles(cv::Mat &R);
   bool isRotationMatrix(cv::Mat &R);
 
@@ -137,6 +143,11 @@ private:
   double minmove_ = 0.01;
   double maxmove_ = 0.01;
   std::string track_mode_ = "stereoicp_f2f";
+  int nFeatures_;
+  float fScaleFactor_;
+  int nLevels_;
+  int fIniThFAST_;
+  int fMinThFAST_;
 };
 
 } // namespace robust_vslam

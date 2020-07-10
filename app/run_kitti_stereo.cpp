@@ -1,3 +1,5 @@
+// created by liuzhenbo in 2020/7/10
+
 #include "robust_vslam/System.h"
 
 int main(int argc, char **argv)
@@ -11,7 +13,6 @@ int main(int argc, char **argv)
     robust_vslam::System *vo(
         new robust_vslam::System(config_file_path));
 
-    vo->Init_System();
     vo->Run();
 
     return 0;

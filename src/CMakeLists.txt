@@ -1,9 +1,10 @@
 add_library(robust_vslam SHARED      
         frame.cpp                
-        camera.cpp
+        sensors.cpp
         config.cpp
         feature.cpp
-        frontend.cpp
+        tracking.cpp
+        parameter.cpp
         System.cpp
         ORBextractor.cpp)
 

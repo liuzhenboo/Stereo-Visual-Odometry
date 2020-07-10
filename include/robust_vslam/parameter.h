@@ -1,8 +1,11 @@
 // created by liuzhenbo in 2020/7/9
+#pragma once
+
+#ifndef robust_vslam_PARAMETER_H
+#define robust_vslam_PARAMETER_H
 
 #include "robust_vslam/common_include.h"
 #include "robust_vslam/config.h"
-#include "robust_vslam/sensors.h"
 namespace robust_vslam
 {
 
@@ -10,8 +13,10 @@ class Parameter
 {
 public:
     typedef std::shared_ptr<Parameter> Ptr;
+    Parameter();
 
     // Sensors
+    // stereo camera
     double fx1_, fy1_, cx1_, cy1_, fx2_, fy2_, cx2_, cy2_;
     cv::Mat K1_ = cv::Mat::zeros(3, 3, CV_64F);
     cv::Mat K2_ = cv::Mat::zeros(3, 3, CV_64F);
@@ -42,9 +47,11 @@ public:
     double minmove_;
     int GFTTDetector_num_;
     int nFeatures_;
-    int fScaleFactor_;
+    float fScaleFactor_;
     int nLevels_;
     int fIniThFAST_;
     int fMinThFAST_;
+    std::string dataset_path_;
 };
 } // namespace robust_vslam
+#endif // robust_vslam_PARAMETER_H

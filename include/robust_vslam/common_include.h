@@ -17,6 +17,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include <boost/format.hpp>
+#include <fstream>
+
 // define the commonly included file to avoid a long include list
 #include <Eigen/Core>
 #include <Eigen/Geometry>

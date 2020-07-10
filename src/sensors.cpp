@@ -35,7 +35,7 @@ cv::Mat Sensors::world2camera(const cv::Mat &p_w, const cv::Mat &T_c_w)
 cv::Mat Sensors::camera2world(const cv::Mat &p_c, const cv::Mat &T_c_w)
 {
     cv::Mat R_c_w = T_c_w.rowRange(0, 3).colRange(0, 3);
-    cv::Mat R_w_c = R_c_w.inverse();
+    cv::Mat R_w_c = R_c_w.inv();
     cv::Mat t_w_c = -R_w_c * T_c_w.rowRange(0, 3).col(3);
     cv::Mat pc = p_c.rowRange(0, 3).col(0);
     return R_w_c * pc + t_w_c;
@@ -44,14 +44,14 @@ cv::Mat Sensors::camera2world(const cv::Mat &p_c, const cv::Mat &T_c_w)
 cv::Mat Sensors::camera2pixel(const cv::Mat &p_c)
 {
     cv::Mat pc = p_c.rowRange(0, 3).col(0);
-    cv::Mat camera = (cv::Mat_<double>(2, 1) << (fx_ * pc.at<double>(0, 0) / pc.at<double>(2, 0) + cx_),
-                      (fy_ * pc.at<double>(1, 0) / pc.at<double>(2, 0) + cy_));
+    cv::Mat camera = (cv::Mat_<double>(2, 1) << (fx1_ * pc.at<double>(0, 0) / pc.at<double>(2, 0) + cx1_),
+                      (fy1_ * pc.at<double>(1, 0) / pc.at<double>(2, 0) + cy1_));
     return camera;
 }
 
 cv::Mat Sensors::pixel2camera(const cv::Mat &p_p, double depth)
 {
-    cv::Mat pixel = (cv::Mat_<double>(3, 1) << depth * (p_p.at<double>(0, 0) - cx_) / fx_, depth * (p_p.at<double>(1, 0) - cy_) / fy_, depth);
+    cv::Mat pixel = (cv::Mat_<double>(3, 1) << depth * (p_p.at<double>(0, 0) - cx1_) / fx1_, depth * (p_p.at<double>(1, 0) - cy1_) / fy1_, depth);
 
     return pixel;
 }

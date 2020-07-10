@@ -1,6 +1,6 @@
 %YAML:1.0
 # data
-dataset_dir_kitti: /media/lzb/Windows-SSD/ubuntu16/00
+dataset_path: /media/lzb/Windows-SSD/ubuntu16/00
 
 # ros stereo topics
 left_image_topic: /zed/zed_node/left/image_rect_color
@@ -9,7 +9,7 @@ right_image_topic: /zed/zed_node/right/image_rect_color
 # don't care，it doesn't effect others.(this param is diacard)
 ros_data_IaE_dir: /
 
-# ZED-----------------------------------------------
+# ZED
 # camera_L intrinsics
 #camera_l.fx: 699.715
 #camera_l.fy: 699.715
@@ -27,7 +27,8 @@ ros_data_IaE_dir: /
 #Extrinsics_y: 0.00
 #Extrinsics_z: 0.00
 
-# Kitti --------------------------------
+# --------Sensors----------------
+# Kitti
 #camera_L intrinsics
 camera_l.fx: 718.856
 camera_l.fy: 718.856
@@ -40,12 +41,22 @@ camera_r.fy: 718.856
 camera_r.cx: 607.193
 camera_r.cy: 185.216
 
-# Extrinsics (t)
-Extrinsics_x: 0.537
-Extrinsics_y: 0.00
-Extrinsics_z: 0.00
+# t_rl_
+t_lr0: -0.537
+t_lr1: 0.00
+t_lr2: 0.00
+# R_rl_
+R_lr0: 1.0
+R_lr1: 0.0
+R_lr2: 0.0
+R_lr3: 0.0
+R_lr4: 1.0
+R_lr5: 0.0
+R_lr6: 0.0
+R_lr7: 0.0
+R_lr8: 1.0
 
-
+#-----------Tracking------------------------
 # feature detector
 num_features: 500
 
@@ -59,11 +70,9 @@ num_features_tracking: 5
 num_features_tracking_bad: 10
 num_features_needed_for_keyframe: 60
 
-# sliding window size
-num_active_keyframes: 7
 
 #mode LK_stereof2f_pnp, ORB_stereof2f_pnp
-track_mode: ORB_stereof2f_pnp
+track_mode: LK_stereof2f_pnp
 
 inlier_rate: 0.01
 
@@ -72,9 +81,14 @@ iterationsCount: 500
 reprojectionError: 0.5
 confidence: 0.99
 
-orb_dir: /home/lzb/Projects/robust_vslam/config/orb.yaml
-display_scale: 10
+display_scale: 1
 display_x: 300
 display_y: 100
 minmove: 0.05
 maxmove: 10
+fMinThFAST: 7
+fIniThFAST: 20
+nLevels: 8
+fScaleFactor: 1.2
+nFeatures: 2000
+
