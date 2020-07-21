@@ -1,12 +1,12 @@
 #pragma once
 
-#ifndef robust_vslam_FRAME_H
-#define robust_vslam_FRAME_H
+#ifndef lzb_vio_FRAME_H
+#define lzb_vio_FRAME_H
 
-#include "robust_vslam/sensors.h"
-#include "robust_vslam/common_include.h"
+#include "lzb_vio/sensors.h"
+#include "lzb_vio/common_include.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 // forward declare
@@ -64,6 +64,6 @@ public: // data members
     std::vector<uchar> status_;
 };
 
-} // namespace robust_vslam
+} // namespace lzb_vio
 
-#endif // robust_vslam_FRAME_H
+#endif // lzb_vio_FRAME_H

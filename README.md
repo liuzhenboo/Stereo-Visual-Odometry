@@ -1,4 +1,4 @@
-## robust_vslam 
+## lzb_vio 
 
 This is a simple frame to frame visual odometry.
 
@@ -33,7 +33,7 @@ run:
 
 ```
 cd robust-vslam/app/ros/robust-vslam
-./robust_vslam_ros ../../../config/default.yaml
+./lzb_vio_ros ../../../config/default.yaml
 rosbag play xxx.bag
 ```
 

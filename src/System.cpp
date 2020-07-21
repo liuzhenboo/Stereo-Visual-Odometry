@@ -1,9 +1,9 @@
 // created by liuzhenbo in 2020/7/9
 
-#include "robust_vslam/System.h"
+#include "lzb_vio/System.h"
 #include <chrono>
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 System::System(std::string &config_path)
@@ -112,4 +112,4 @@ void System::Reset()
 {
 }
 
-} // namespace robust_vslam
+} // namespace lzb_vio

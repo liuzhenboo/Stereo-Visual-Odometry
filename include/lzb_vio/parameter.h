@@ -1,12 +1,12 @@
 // created by liuzhenbo in 2020/7/9
 #pragma once
 
-#ifndef robust_vslam_PARAMETER_H
-#define robust_vslam_PARAMETER_H
+#ifndef lzb_vio_PARAMETER_H
+#define lzb_vio_PARAMETER_H
 
-#include "robust_vslam/common_include.h"
-#include "robust_vslam/config.h"
-namespace robust_vslam
+#include "lzb_vio/common_include.h"
+#include "lzb_vio/config.h"
+namespace lzb_vio
 {
 
 class Parameter
@@ -53,5 +53,5 @@ public:
     int fMinThFAST_;
     std::string dataset_path_;
 };
-} // namespace robust_vslam
-#endif // robust_vslam_PARAMETER_H
+} // namespace lzb_vio
+#endif // lzb_vio_PARAMETER_H

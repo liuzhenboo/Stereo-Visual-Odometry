@@ -1,10 +1,10 @@
 // created by liuzhenbo in 2020/7/9
 
-#include "robust_vslam/tracking.h"
+#include "lzb_vio/tracking.h"
 
 #include <opencv2/opencv.hpp>
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 Tracking::Tracking(System *system, Parameter::Ptr parameter, Sensors::Ptr sensors)
@@ -46,7 +46,7 @@ void Tracking::Readparameter()
     fMinThFAST_ = parameter_->fMinThFAST_;
 }
 // 向系统输入新的图片数据
-bool Tracking::AddFrame(robust_vslam::Frame::Ptr frame)
+bool Tracking::AddFrame(lzb_vio::Frame::Ptr frame)
 {
     current_frame_ = frame;
 
@@ -378,7 +378,7 @@ void Tracking::displayTracking(cv::Mat &imageLeft_t1,
         cv::line(vis, pointsLeft_t0[i], pointsLeft_t1[i], CV_RGB(0, 255, 0));
     }
 
-    cv::imshow("robust_vslam ", vis);
+    cv::imshow("lzb_vio ", vis);
 }
 
 bool Tracking::G2O_EstimatePose_PnP(cv::Mat &projMatrl,
@@ -668,4 +668,4 @@ void Tracking::Set_vo(System *slam)
     system_ = slam;
 }
 
-} // namespace robust_vslam
+} // namespace lzb_vio

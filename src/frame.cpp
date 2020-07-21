@@ -17,9 +17,9 @@
  *
  */
 
-#include "robust_vslam/frame.h"
+#include "lzb_vio/frame.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 Frame::Frame(long id, double time_stamp, const SE3 &pose, const Mat &left, const Mat &right)
@@ -40,4 +40,4 @@ void Frame::SetKeyFrame()
     keyframe_id_ = keyframe_factory_id++;
 }
 
-} // namespace robust_vslam
+} // namespace lzb_vio

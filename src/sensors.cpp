@@ -1,8 +1,8 @@
 // created by liuzhenbo in 2020/7/9
 
-#include "robust_vslam/sensors.h"
+#include "lzb_vio/sensors.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 Sensors::Sensors(Parameter::Ptr parameter)
@@ -66,4 +66,4 @@ cv::Mat Sensors::pixel2world(const cv::Mat &p_p, const cv::Mat &T_c_w, double de
     return camera2world(pixel2camera(p_p, depth), T_c_w);
 }
 
-} // namespace robust_vslam
+} // namespace lzb_vio

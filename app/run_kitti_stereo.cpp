@@ -1,6 +1,6 @@
 // created by liuzhenbo in 2020/7/10
 
-#include "robust_vslam/System.h"
+#include "lzb_vio/System.h"
 
 int main(int argc, char **argv)
 {
@@ -10,8 +10,8 @@ int main(int argc, char **argv)
                   << "./xx yy/cc.yaml" << std::endl;
     }
     std::string config_file_path = argv[1];
-    robust_vslam::System *vo(
-        new robust_vslam::System(config_file_path));
+    lzb_vio::System *vo(
+        new lzb_vio::System(config_file_path));
 
     vo->Run();
 

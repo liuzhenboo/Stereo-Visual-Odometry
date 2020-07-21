@@ -1,12 +1,12 @@
 // created by liuzhenbo in 2020/7/9
 #pragma once
 
-#ifndef robust_vslam_SENSORS_H
-#define robust_vslam_SENSORS_H
-#include "robust_vslam/parameter.h"
-#include "robust_vslam/common_include.h"
+#ifndef lzb_vio_SENSORS_H
+#define lzb_vio_SENSORS_H
+#include "lzb_vio/parameter.h"
+#include "lzb_vio/common_include.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 //class Parameter;
 // Sensor platform
@@ -59,5 +59,5 @@ public:
     cv::Mat world2pixel(const cv::Mat &p_w, const cv::Mat &T_c_w);
 };
 
-} // namespace robust_vslam
-#endif // robust_vslam_SENSORS_H
+} // namespace lzb_vio
+#endif // lzb_vio_SENSORS_H

@@ -5,13 +5,13 @@
 #include <vector>
 #include <iterator>
 
-#include "robust_vslam/ORBextractor.h"
+#include "lzb_vio/ORBextractor.h"
 #include <iostream>
 
 using namespace cv;
 using namespace std;
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 const int PATCH_SIZE = 31;
@@ -1084,4 +1084,4 @@ void ORBextractor::ComputePyramid(cv::Mat image)
     }
 }
 
-} // namespace robust_vslam
+} // namespace lzb_vio

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(robust_vslam)
+project(lzb_vio)
 
 set(CMAKE_BUILD_TYPE Release)
 

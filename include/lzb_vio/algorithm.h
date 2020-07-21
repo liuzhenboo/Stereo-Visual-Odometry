@@ -1,11 +1,11 @@
-#ifndef robust_vslam_ALGORITHM_H
-#define robust_vslam_ALGORITHM_H
+#ifndef lzb_vio_ALGORITHM_H
+#define lzb_vio_ALGORITHM_H
 
-// algorithms used in robust_vslam
-#include "robust_vslam/common_include.h"
+// algorithms used in lzb_vio
+#include "lzb_vio/common_include.h"
 //using namespace std;
 //using namespace cv;
-namespace robust_vslam
+namespace lzb_vio
 {
 
 /**
@@ -113,6 +113,6 @@ inline bool triangulation(const std::vector<SE3> &poses,
 // converters
 inline Vec2 toVec2(const cv::Point2f p) { return Vec2(p.x, p.y); }
 
-} // namespace robust_vslam
+} // namespace lzb_vio
 
-#endif // robust_vslam_ALGORITHM_H
+#endif // lzb_vio_ALGORITHM_H

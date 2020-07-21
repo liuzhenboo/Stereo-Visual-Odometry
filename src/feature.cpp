@@ -1,7 +1,7 @@
 
-#include "robust_vslam/feature.h"
+#include "lzb_vio/feature.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 }

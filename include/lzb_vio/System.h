@@ -1,13 +1,13 @@
 #pragma once
-#ifndef robust_vslam_System_H
-#define robust_vslam_System_H
+#ifndef lzb_vio_System_H
+#define lzb_vio_System_H
 
-#include "robust_vslam/tracking.h"
-#include "robust_vslam/common_include.h"
-#include "robust_vslam/parameter.h"
-#include "robust_vslam/frame.h"
+#include "lzb_vio/tracking.h"
+#include "lzb_vio/common_include.h"
+#include "lzb_vio/parameter.h"
+#include "lzb_vio/frame.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 class Tracking;
 
@@ -45,6 +45,6 @@ private:
     bool inited_ = false;
     std::string dataset_path_;
 };
-} // namespace robust_vslam
+} // namespace lzb_vio
 
-#endif // robust_vslam_System_H
+#endif // lzb_vio_System_H

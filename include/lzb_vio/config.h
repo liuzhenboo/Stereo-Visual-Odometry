@@ -1,10 +1,10 @@
 #pragma once
-#ifndef robust_vslam_CONFIG_H
-#define robust_vslam_CONFIG_H
+#ifndef lzb_vio_CONFIG_H
+#define lzb_vio_CONFIG_H
 
-#include "robust_vslam/common_include.h"
+#include "lzb_vio/common_include.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 /**
@@ -32,6 +32,6 @@ public:
         return T(Config::config_->file_[key]);
     }
 };
-} // namespace robust_vslam
+} // namespace lzb_vio
 
-#endif // robust_vslam_CONFIG_H
+#endif // lzb_vio_CONFIG_H

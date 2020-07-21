@@ -7,17 +7,17 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <opencv2/core/core.hpp>
-#include "robust_vslam/System.h"
-#include "robust_vslam/frame.h"
+#include "lzb_vio/System.h"
+#include "lzb_vio/frame.h"
 using namespace std;
 class ImageGrabber
 {
 public:
-    ImageGrabber(robust_vslam::System *pSLAM) : mp_slam(pSLAM) {}
+    ImageGrabber(lzb_vio::System *pSLAM) : mp_slam(pSLAM) {}
 
     void Get_stereo_data(const sensor_msgs::ImageConstPtr &msgLeft, const sensor_msgs::ImageConstPtr &msgRight);
 
-    robust_vslam::System *mp_slam;
+    lzb_vio::System *mp_slam;
 };
 
 int main(int argc, char **argv)
@@ -27,8 +27,8 @@ int main(int argc, char **argv)
     std::string config_file_path = argv[1];
 
     // 初始化slam系统，传入config文件地址
-    robust_vslam::System *slam(
-        new robust_vslam::System(config_file_path));
+    lzb_vio::System *slam(
+        new lzb_vio::System(config_file_path));
     ImageGrabber igb(slam);
 
     ros::NodeHandle nh;
@@ -88,7 +88,7 @@ void ImageGrabber::Get_stereo_data(const sensor_msgs::ImageConstPtr &msgLeft, co
     // cv::resize(image_right, image_right_resized, cv::Size(), 0.6, 0.6,
     //            cv::INTER_NEAREST);
 
-    robust_vslam::Frame::Ptr new_frame = robust_vslam::Frame::CreateFrame(); //robust_vslam::Frame::CreateFrame();
+    lzb_vio::Frame::Ptr new_frame = lzb_vio::Frame::CreateFrame(); //lzb_vio::Frame::CreateFrame();
     new_frame->left_img_ = image_left;
     new_frame->right_img_ = image_right;
     mp_slam->Step_ros(new_frame);

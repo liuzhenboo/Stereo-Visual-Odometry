@@ -1,6 +1,6 @@
-#include "robust_vslam/config.h"
+#include "lzb_vio/config.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 bool Config::SetParameterFile(const std::string &filename)
 {
@@ -25,4 +25,4 @@ Config::~Config()
 
 std::shared_ptr<Config> Config::config_ = nullptr;
 
-} // namespace robust_vslam
+} // namespace lzb_vio

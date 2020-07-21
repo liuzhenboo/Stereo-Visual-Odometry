@@ -1,8 +1,8 @@
 
 // created by liuzhenbo in 2020/7/9
 
-#include "robust_vslam/parameter.h"
-namespace robust_vslam
+#include "lzb_vio/parameter.h"
+namespace lzb_vio
 {
 Parameter::Parameter()
 {
@@ -70,4 +70,4 @@ Parameter::Parameter()
     fMinThFAST_ = Config::Get<int>("fMinThFAST");
     dataset_path_ = Config::Get<std::string>("dataset_path");
 }
-} // namespace robust_vslam
+} // namespace lzb_vio

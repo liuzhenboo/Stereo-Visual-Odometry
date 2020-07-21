@@ -1,20 +1,20 @@
 // created by liuzhenbo in 2020/7/9
 
 #pragma once
-#ifndef robust_vslam_TRACKING_H
-#define robust_vslam_TRACKING_H
+#ifndef lzb_vio_TRACKING_H
+#define lzb_vio_TRACKING_H
 
 #include <opencv2/features2d.hpp>
-#include "robust_vslam/ORBextractor.h"
+#include "lzb_vio/ORBextractor.h"
 
-#include "robust_vslam/parameter.h"
-#include "robust_vslam/sensors.h"
-#include "robust_vslam/algorithm.h"
-#include "robust_vslam/frame.h"
-//#include "robust_vslam/System.h"
-#include "robust_vslam/feature.h"
+#include "lzb_vio/parameter.h"
+#include "lzb_vio/sensors.h"
+#include "lzb_vio/algorithm.h"
+#include "lzb_vio/frame.h"
+//#include "lzb_vio/System.h"
+#include "lzb_vio/feature.h"
 
-namespace robust_vslam
+namespace lzb_vio
 {
 class System;
 class Sensors;
@@ -152,6 +152,6 @@ private:
   int fMinThFAST_;
 };
 
-} // namespace robust_vslam
+} // namespace lzb_vio
 
-#endif // robust_vslam_TRACKING_H
+#endif // lzb_vio_TRACKING_H

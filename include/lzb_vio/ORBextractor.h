@@ -5,7 +5,7 @@
 #include <list>
 #include <opencv/cv.h>
 
-namespace robust_vslam
+namespace lzb_vio
 {
 
 class ExtractorNode
@@ -99,6 +99,6 @@ protected:
     std::vector<float> mvInvLevelSigma2;
 };
 
-} // namespace robust_vslam
+} // namespace lzb_vio
 
 #endif

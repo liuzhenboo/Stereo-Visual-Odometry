@@ -1,4 +1,4 @@
-add_library(robust_vslam SHARED      
+add_library(lzb_vio SHARED      
         frame.cpp                
         sensors.cpp
         config.cpp
@@ -8,5 +8,5 @@ add_library(robust_vslam SHARED
         System.cpp
         ORBextractor.cpp)
 
-target_link_libraries(robust_vslam
+target_link_libraries(lzb_vio
         ${THIRD_PARTY_LIBS})
