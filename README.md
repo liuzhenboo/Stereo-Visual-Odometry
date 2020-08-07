@@ -1,4 +1,4 @@
-## lzb_vio 
+## Stereo-Visual-Odometry 
 
 This is a simple frame to frame visual odometry.
 
